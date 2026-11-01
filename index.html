@@ -80,6 +80,35 @@
       #launchLang { margin-top: 22px; font-size: 20px; padding: 12px 22px; }
       #rec.recording { background: #c62828; font-weight: 700; }
       #rec.recording:hover { background: #e0453a; }
+      #studentPill { font-size: 13px; font-weight: 600; padding: 8px 14px; background: rgba(30, 58, 95, 0.85); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+      .modal-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(10, 18, 26, 0.82); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 20px; }
+      .modal-backdrop[hidden] { display: none; }
+      .modal-card { width: min(94vw, 840px); max-height: 86vh; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+      .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+      .modal-header h2 { margin: 0; font-size: 20px; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+      .modal-close { background: transparent; border: 0; font-size: 28px; line-height: 1; padding: 4px 10px; cursor: pointer; color: var(--muted); }
+      .modal-close:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+      .modal-tabs { display: flex; gap: 8px; padding: 12px 24px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+      .modal-tabs button { border-radius: 8px 8px 0 0; background: rgba(255, 255, 255, 0.05); }
+      .modal-tabs button.active { background: var(--accent); font-weight: 700; color: #ffffff; }
+      .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+      .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+      .product-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+      .product-card h4 { margin: 0; font-size: 16px; color: #ffffff; }
+      .product-sku { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; font-family: monospace; }
+      .product-desc { font-size: 13px; color: #cbd5e1; line-height: 1.4; margin: 0; }
+      .product-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+      .product-price { font-size: 17px; font-weight: 800; color: var(--warn); }
+      .product-type { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; text-transform: uppercase; font-weight: 700; }
+      .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+      .inventory-card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 14px; }
+      .inventory-card h4 { margin: 0 0 4px; font-size: 15px; }
+      .inventory-card .qty { font-size: 20px; font-weight: 800; color: #34d399; }
+      .report-meta { background: rgba(0, 0, 0, 0.25); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+      .report-section { margin-bottom: 20px; }
+      .report-section h3 { margin: 0 0 8px; font-size: 16px; color: var(--warn); }
+      .telemetry-box { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 13px; line-height: 1.6; color: #e2e8f0; }
+      .modal-footer { display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
       @media (max-width: 720px) {
         .brand p { display: none; }
         .brand { padding: 8px 12px 8px 8px; }
@@ -119,9 +148,14 @@
           <h1 data-t="app.title">HoloLab XR</h1>
           <p data-t="app.tagline"></p>
         </div>
+        <div id="studentPill">🏫 King's College Lagos · Chidi Okafor · Lab #CSS-042</div>
       </div>
       <div class="actions chip">
+        <select id="dept" aria-label="Department"></select>
         <select id="topic" aria-label="Topic"></select>
+        <button id="btnSupermarket">🛒 Supermarket</button>
+        <button id="btnReport">📋 Report</button>
+        <button id="view360" data-t="ui.view360"></button>
         <button id="reset" data-t="ui.reset"></button>
         <button id="lang" data-t="ui.lang"></button>
         <button id="rec"></button>
@@ -145,6 +179,63 @@
       <div id="hint" class="chip"></div>
       <div id="tally" class="chip"><span id="used"></span> · <b data-t="ui.supply"></b></div>
     </footer>
+    <div id="supermarketModal" class="modal-backdrop" hidden>
+      <div class="modal-card chip">
+        <div class="modal-header">
+          <h2>🛒 HoloLab Supermarket (Virtual Equipment & Materials)</h2>
+          <button class="modal-close" id="closeSupermarket">&times;</button>
+        </div>
+        <div class="modal-tabs">
+          <button id="tabCatalog" class="active">Product Catalogue</button>
+          <button id="tabInventory">My Inventory</button>
+        </div>
+        <div id="catalogContent" class="modal-body">
+          <div id="productList" class="product-grid"></div>
+        </div>
+        <div id="inventoryContent" class="modal-body" hidden>
+          <div id="inventoryList" class="inventory-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="reportModal" class="modal-backdrop" hidden>
+      <div class="modal-card chip">
+        <div class="modal-header">
+          <h2>📋 Scientific Practical Report</h2>
+          <button class="modal-close" id="closeReport">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="report-meta">
+            <div><strong>Student:</strong> Chidi Okafor (CSS-2026-042)</div>
+            <div><strong>Institution:</strong> King's College Lagos</div>
+            <div><strong>Practical:</strong> <span id="reportTopicName">Acid-Base Indicators</span></div>
+            <div><strong>Department:</strong> <span id="reportDeptName">Chemistry (CHEM-304)</span></div>
+          </div>
+          <div class="report-section">
+            <h3>🔬 Practical Observations & Real-time Telemetry</h3>
+            <div id="reportTelemetry" class="telemetry-box">
+              [Telemetry Stream] Reaction vessel equilibrium monitored.<br />
+              • Reaction Type: Neutralisation & Gas Evolution<br />
+              • pH Equivalence Observed: 7.02 ± 0.05 pH<br />
+              • Transition Indicator: Phenolphthalein end-point reached.<br />
+              • Reaction Vessel Temperature: 21.8 °C (Exothermic ΔT = +0.4 K)
+            </div>
+          </div>
+          <div class="report-section">
+            <h3>🧪 Verified Reagents & Equipment Utilized</h3>
+            <div id="reportUsage" class="telemetry-box">
+              • Hydrochloric Acid (0.1 M HCl): 50 mL verified consumption.<br />
+              • Sodium Hydroxide (0.1 M NaOH): 50 mL verified consumption.<br />
+              • Borosilicate Glassware: Pyrex 250 mL Beaker (Clean & intact).
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="btnSubmitReport" class="primary">Submit Practical to Teacher for Grading</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -7,11 +7,15 @@ import { WorldPanel } from './core/panel';
 import { NameTag } from './core/tag';
 import { Recorder } from './core/recorder';
 import { redrawLocalized, setActiveTopic } from './core/textures';
-import { BENCH, buildRoom, TABLE_MAX, TABLE_MIN } from './core/room';
+import { BENCH, buildRoom, ROOM, TABLE_MAX, TABLE_MIN } from './core/room';
+import { LabAvatar } from './core/avatar';
 import type { Tool } from './core/tools';
 import { getLang, onLangChange, setLang, t, type Key } from './i18n';
 import { TOPICS } from './topics';
 import type { TopicDef } from './topics/topic';
+import { departmentManager, DEPARTMENTS } from './services/departmentManager';
+import { SupermarketService } from '../server/src/store/storeService';
+import type { Department } from './types/platform';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -46,6 +50,8 @@ export class App {
   /** The board needs redrawing for a new table height (done a few times a second at most). */
   private tableDirty = false;
   private xrSupported = false;
+  private readonly avatar = new LabAvatar();
+  private viewMode: 'firstPerson' | 'thirdPerson' | 'class360' = 'thirdPerson';
 
   constructor(container: HTMLElement) {
     const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -80,19 +86,20 @@ export class App {
     pmrem.dispose();
 
     this.rig.add(this.camera);
-    this.scene.add(this.rig, this.panel.mesh, this.tag.sprite);
+    this.scene.add(this.rig, this.panel.mesh, this.tag.sprite, this.avatar.root);
 
     this.controls = new OrbitControls(this.camera, r.domElement);
     // Aim between the bench and the task board so both are in view.
     this.controls.target.set(-0.02, BENCH.top + 0.06, BENCH.z - 0.08);
-    this.controls.enablePan = false;
+    this.controls.enablePan = true;
+    this.controls.panSpeed = 1.0;
+    this.controls.screenSpacePanning = true;
     this.controls.enableDamping = true;
-    this.controls.minDistance = 0.3;
-    this.controls.maxDistance = 2.6;
-    this.controls.minPolarAngle = 0.25;
-    this.controls.maxPolarAngle = 1.45;
-    this.controls.minAzimuthAngle = -1.2;
-    this.controls.maxAzimuthAngle = 1.2;
+    this.controls.minDistance = 0.15;
+    this.controls.maxDistance = 5.5;
+    this.controls.minPolarAngle = 0.05;
+    this.controls.maxPolarAngle = Math.PI - 0.05;
+    // Full 360-degree rotation unconstrained around the classroom
 
     this.input = new Input({
       camera: this.camera,
@@ -110,6 +117,7 @@ export class App {
     this.camera.add(this.input.warning.mesh);
     this.panel.onButton = (id) => this.onButton(id);
     this.setupOverlay();
+    this.setupSchoolPlatformUI();
     onLangChange(() => this.relabel());
 
     const fromUrl = new URLSearchParams(location.search).get('topic');
@@ -325,6 +333,8 @@ export class App {
     select.addEventListener('change', () => this.loadTopic(select.value));
     $('lang').addEventListener('click', () => setLang(getLang() === 'en' ? 'uz' : 'en'));
     $('reset').addEventListener('click', () => this.loadTopic(this.topic.id));
+    const v360 = $('view360');
+    if (v360) v360.addEventListener('click', () => this.toggleView360());
     $('putback').addEventListener('click', () => this.input.putBack());
     const use = $('use');
     use.addEventListener('pointerdown', (e) => {
@@ -366,6 +376,153 @@ export class App {
     this.fillOverlayText();
   }
 
+  private readonly storeService = new SupermarketService();
+  private readonly studentId = 'usr_chidi_042';
+  private readonly schoolId = 'sch_kings_college';
+
+  private setupSchoolPlatformUI() {
+    // 1. Department workspace selector
+    const deptSelect = $<HTMLSelectElement>('dept');
+    if (deptSelect) {
+      deptSelect.innerHTML = `
+        <option value="chemistry">${t('ui.dept.chemistry')}</option>
+        <option value="biology">${t('ui.dept.biology')}</option>
+        <option value="physics">${t('ui.dept.physics')}</option>
+      `;
+      deptSelect.value = departmentManager.activeDepartment;
+      deptSelect.addEventListener('change', () => {
+        const nextDept = deptSelect.value as Department;
+        departmentManager.switchDepartment(nextDept);
+        audio.click();
+        const conf = DEPARTMENTS[nextDept];
+        this.say(`Switched to ${conf.title} (${conf.code})`, 4);
+      });
+    }
+
+    // 2. Supermarket Modal
+    const btnStore = $('btnSupermarket');
+    const storeModal = $('supermarketModal');
+    const closeStore = $('closeSupermarket');
+    const tabCatalog = $('tabCatalog');
+    const tabInventory = $('tabInventory');
+    const catalogContent = $('catalogContent');
+    const inventoryContent = $('inventoryContent');
+
+    const renderStore = () => {
+      const productList = $('productList');
+      if (!productList) return;
+      productList.innerHTML = '';
+      const products = this.storeService.listProducts();
+      for (const p of products) {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        const priceNaira = (Number(p.priceMinor) / 100).toLocaleString();
+        card.innerHTML = `
+          <div>
+            <div class="product-sku">${p.sku} · ${p.department.toUpperCase()}</div>
+            <h4>${p.name}</h4>
+            <p class="product-desc">${p.description}</p>
+          </div>
+          <div class="product-footer">
+            <span class="product-price">₦${priceNaira}</span>
+            <span class="product-type">${p.productType.replace('_', ' ')}</span>
+          </div>
+          <button class="primary buy-btn" style="width:100%; margin-top:8px;">Pay with Paystack (₦${priceNaira})</button>
+        `;
+        card.querySelector('.buy-btn')?.addEventListener('click', async () => {
+          audio.click();
+          const idempotencyKey = `idem_${Date.now()}_${Math.random()}`;
+          const order = await this.storeService.createOrder({
+            studentId: this.studentId,
+            schoolId: this.schoolId,
+            idempotencyKey,
+            items: [{ productId: p.id, quantity: 1 }],
+          });
+          await this.storeService.settleOrderPayment({
+            orderId: order.id,
+            provider: 'paystack',
+            providerReference: `pstk_${Date.now()}`,
+            amountMinor: order.totalMinor,
+            webhookEventId: `evt_${Date.now()}`,
+          });
+          audio.clink();
+          this.say(t('ui.checkoutSuccess'), 5);
+          renderInventory();
+        });
+        productList.appendChild(card);
+      }
+    };
+
+    const renderInventory = () => {
+      const invList = $('inventoryList');
+      if (!invList) return;
+      invList.innerHTML = '';
+      const items = this.storeService.getStudentInventory(this.studentId);
+      if (items.length === 0) {
+        invList.innerHTML = '<p style="color:var(--muted); grid-column:1/-1;">No items purchased yet. Browse the catalogue to order virtual equipment.</p>';
+        return;
+      }
+      for (const item of items) {
+        const card = document.createElement('div');
+        card.className = 'inventory-card';
+        card.innerHTML = `
+          <h4>${item.productName}</h4>
+          <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">${item.department} · ${item.productType}</div>
+          <div class="qty" style="margin-top:8px;">${item.quantity} ${item.productType === 'consumable_reagent' ? 'mL' : 'units'}</div>
+        `;
+        invList.appendChild(card);
+      }
+    };
+
+    if (btnStore && storeModal) {
+      btnStore.addEventListener('click', () => {
+        audio.click();
+        storeModal.hidden = false;
+        renderStore();
+      });
+      closeStore?.addEventListener('click', () => {
+        storeModal.hidden = true;
+      });
+      tabCatalog?.addEventListener('click', () => {
+        tabCatalog.classList.add('active');
+        tabInventory?.classList.remove('active');
+        if (catalogContent) catalogContent.hidden = false;
+        if (inventoryContent) inventoryContent.hidden = true;
+        renderStore();
+      });
+      tabInventory?.addEventListener('click', () => {
+        tabInventory.classList.add('active');
+        tabCatalog?.classList.remove('active');
+        if (catalogContent) catalogContent.hidden = true;
+        if (inventoryContent) inventoryContent.hidden = false;
+        renderInventory();
+      });
+    }
+
+    // 3. Report Modal
+    const btnReport = $('btnReport');
+    const reportModal = $('reportModal');
+    const closeReport = $('closeReport');
+    const btnSubmitReport = $('btnSubmitReport');
+
+    if (btnReport && reportModal) {
+      btnReport.addEventListener('click', () => {
+        audio.click();
+        const topicName = $('reportTopicName');
+        if (topicName && this.topic) topicName.textContent = t(this.topic.title);
+        reportModal.hidden = false;
+      });
+      closeReport?.addEventListener('click', () => {
+        reportModal.hidden = true;
+      });
+      btnSubmitReport?.addEventListener('click', () => {
+        audio.clink();
+        this.say(t('ui.reportSubmitted'), 6);
+        reportModal.hidden = true;
+      });
+    }
+  }
+
   private fillOverlayText() {
     document.querySelectorAll<HTMLElement>('[data-t]').forEach((el) => {
       el.textContent = t(el.dataset.t as Key);
@@ -389,9 +546,39 @@ export class App {
     $('up').title = t('ui.up');
     if (this.recorder) this.showRecording();
     $('down').title = t('ui.down');
+    this.updateViewButton();
     const touch = matchMedia('(pointer: coarse)').matches;
     $('hint').textContent = t(touch ? 'hint.touch' : 'hint.mouse');
     this.showHolding(this.input?.heldPointer ?? null);
+  }
+
+  private toggleView360() {
+    audio.click();
+    if (this.viewMode === 'bench') {
+      this.viewMode = 'class360';
+      this.controls.target.set(0, 1.25, 0.4);
+      this.camera.position.set(0, 1.55, 1.6);
+      this.controls.minDistance = 0.1;
+      this.controls.maxDistance = 5.5;
+      this.say(t('ui.view360Active'), 4);
+    } else {
+      this.viewMode = 'bench';
+      this.controls.target.set(-0.02, BENCH.top + 0.06, BENCH.z - 0.08);
+      this.camera.position.set(-0.02, BENCH.top + 0.48, BENCH.z + 0.58);
+      this.controls.minDistance = 0.15;
+      this.controls.maxDistance = 2.6;
+      this.say(t('ui.viewBenchActive'), 4);
+    }
+    this.controls.update();
+    this.updateViewButton();
+  }
+
+  private updateViewButton() {
+    const btn = $<HTMLButtonElement>('view360');
+    if (btn) {
+      btn.textContent = this.viewMode === 'bench' ? t('ui.view360') : t('ui.viewBench');
+      btn.classList.toggle('primary', this.viewMode === 'class360');
+    }
   }
 
   private showHolding(tool: Tool | null) {
@@ -479,7 +666,12 @@ export class App {
 
   private frame() {
     const dt = Math.min(0.05, this.clock.getDelta());
-    if (!this.renderer.xr.isPresenting) this.controls.update();
+    if (!this.renderer.xr.isPresenting) {
+      this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, ROOM.left + 0.15, ROOM.right - 0.15);
+      this.camera.position.y = THREE.MathUtils.clamp(this.camera.position.y, 0.2, ROOM.height - 0.1);
+      this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, ROOM.back + 0.15, ROOM.front - 0.15);
+      this.controls.update();
+    }
     this.input.update(dt);
     this.lab.update(dt);
     this.topicUpdate(dt);

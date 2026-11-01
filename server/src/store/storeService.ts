@@ -4,9 +4,7 @@ import type {
   OrderItem,
   StudentInventoryItem,
   InventoryTransaction,
-  OrderStatus,
   Payment,
-  PaymentStatus,
 } from '../../../src/types/platform';
 
 export interface PaymentProvider {
@@ -29,7 +27,7 @@ export interface PaymentProvider {
 }
 
 export class MockPaystackProvider implements PaymentProvider {
-  private secret = 'mock_sk_live_hololab_secret_key';
+  readonly secret = 'mock_sk_live_hololab_secret_key';
 
   async initializePayment(input: {
     reference: string;
@@ -58,7 +56,7 @@ export class MockPaystackProvider implements PaymentProvider {
     };
   }
 
-  verifyWebhook(rawBody: string, signature: string): boolean {
+  verifyWebhook(_rawBody: string, signature: string): boolean {
     return signature.startsWith('mock_pstk_sig_');
   }
 }

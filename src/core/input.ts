@@ -97,6 +97,26 @@ export class Input {
         e.preventDefault();
         this.nudgeHeight(e.key === 'ArrowUp' || e.key.toLowerCase() === 'w' ? 0.02 : -0.02);
       }
+      if (!this.heldPointer && !this.host.renderer.xr.isPresenting) {
+        const k = e.key.toLowerCase();
+        if (['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
+          e.preventDefault();
+          const forward = new THREE.Vector3();
+          this.host.camera.getWorldDirection(forward);
+          forward.y = 0;
+          forward.normalize();
+          const right = new THREE.Vector3(-forward.z, 0, forward.x);
+          const step = 0.16;
+          const delta = new THREE.Vector3();
+          if (k === 'w' || k === 'arrowup') delta.addScaledVector(forward, step);
+          if (k === 's' || k === 'arrowdown') delta.addScaledVector(forward, -step);
+          if (k === 'd' || k === 'arrowright') delta.addScaledVector(right, step);
+          if (k === 'a' || k === 'arrowleft') delta.addScaledVector(right, -step);
+          this.host.camera.position.add(delta);
+          this.host.controls.target.add(delta);
+          this.host.controls.update();
+        }
+      }
       if (e.key === ' ' && this.heldPointer) {
         e.preventDefault();
         if (!e.repeat) this.useStart();
