@@ -1,0 +1,122 @@
+# Running Virtual Lab VR on a Meta Quest Pro
+
+A step-by-step guide for someone who has never used VR. It takes about 10 minutes the first time.
+
+## 1. Before you start
+
+- **Charge** the headset and both controllers (the Quest Pro charging dock charges all three).
+- Clear a space about **2 × 2 m** with nothing to trip over. You can also do the lab sitting down.
+- The headset and the computer running the lab must be on the **same Wi-Fi**. If the school Wi-Fi
+  blocks devices from seeing each other, turn on your **phone's hotspot** and connect both the PC and
+  the headset to it.
+
+## 2. Put on the headset and set it up
+
+1. Press the **power button** on the left side of the headset until it chimes. Turn on the controllers
+   by holding the **Meta button** (the oval button on the right controller) until it vibrates.
+2. Put the headset on: rest the front on your forehead, pull the back band down, and turn the **dial at
+   the back** until it's snug. Move the lenses with the side wheel until the picture is sharp.
+3. First time only: follow the setup on screen. It asks for Wi-Fi, your Meta account (through the
+   **Meta Horizon app** on your phone) and a **boundary**. Choose **Stationary** (a small circle
+   around you) to keep it simple.
+
+## 3. Learn the controllers
+
+```
+         LEFT controller                       RIGHT controller
+   ┌─────────────────────────┐          ┌─────────────────────────┐
+   │   (X) (Y)   [ ◎ stick ] │          │ [ ◎ stick ]   (A) (B)   │
+   │   ≡ menu                │          │                ⬭ Meta   │
+   │                         │          │                         │
+   │   Trigger: index finger │          │ Trigger: index finger   │
+   │   Grip: middle finger   │          │ Grip: middle finger     │
+   └─────────────────────────┘          └─────────────────────────┘
+```
+
+- **Trigger**: the front button under your index finger.
+- **Grip**: the side button under your middle finger.
+- **Thumbstick**: the little joystick under your thumb.
+- **Meta button** (right controller, oval): opens the Quest menu. Press it any time you're lost.
+
+Outside the lab, you point at things with the white ray from a controller and press the **trigger**
+to click, like a mouse.
+
+## 4. Open the lab in the headset
+
+**Easiest:** in the Quest Browser, open **https://muxsinjon.github.io/virtual-lab-vr/**, bookmark it
+(the star), and press **Enter the lab**. No computer needed. The steps below are only for running
+your own copy from a PC.
+
+**On the computer** (in the project folder):
+
+```bash
+npm.cmd run serve:vr
+```
+
+It prints a line like `➜  Network: https://192.168.1.23:4173/`. Write that address down.
+
+**In the headset:**
+
+1. Press the **Meta button** to open the menu, then open the **Browser** app (globe icon).
+2. Point at the address bar at the top and press the **trigger**. A keyboard appears: type the address
+   exactly, including `https://` and the `:4173` port, and press **Go**.
+3. You'll see **"Your connection is not private"**. That's expected: the certificate is homemade.
+   Click **Advanced**, then **Proceed to … (unsafe)**.
+4. A big **Enter the lab** button fills the page. Point at it and pull the **trigger**. If the browser
+   asks to allow VR, press **Allow**.
+5. The browser disappears and you're standing in the middle of the classroom, facing your bench.
+   Walk around and look at the room, then walk up to the bench (or press **A** / **X** to jump there).
+   A **Controls** card floats above your left controller.
+
+**If the page won't load:** check both devices are on the same Wi-Fi, or use a phone hotspot. If
+Windows asked about **Node.js** network access, allow it on private and public networks.
+
+**Once the site is on GitHub Pages** you don't need the computer at all: just type the
+`https://…github.io/…` address in the Quest browser and skip the warning step.
+
+## 5. Controls in the lab
+
+| Button | What it does |
+|---|---|
+| **Grip** (middle finger), held | Reach your hand to an item: it glows and the controller buzzes. Hold **Grip** to pick it up; let go to put it back in its place. |
+| **Tilt your hand** | Pour from a bottle or beaker, as in real life. Pour slowly near the container's opening. |
+| **Trigger** (index finger) | While holding a dropper: squeeze one drop. Otherwise: point at the wall board or the spirit lamp (a laser appears) and pull to press. |
+| **Left thumbstick** | Walk around (slowly). |
+| **Right thumbstick ◀ ▶** | Turn 30° left or right. |
+| **Right thumbstick ▲ ▼** | Raise or lower the **table** to suit your height (or for sitting). It remembers your choice. |
+| **A** or **X** | Go back to the bench, facing it. Use this if you get lost. |
+| **B** or **Y** | Show or hide the Controls card on your left wrist. It hides by itself once you pick something up. |
+| **Meta button** | Quest menu: exit the lab or the browser. |
+
+The **wall board** behind the bench shows your tasks and what you've used. Its buttons
+(Topics, Reset bench, O‘zbekcha, Table ▼ ▲, ✕ VR) are pressed by pointing and pulling the trigger.
+
+**Table height:** when you enter the lab, the table is set to suit your height automatically. If it
+still feels too high or low, push the right thumbstick up or down, or use **Table ▼ ▲** on the board.
+Your experiment stays as it is: the bench moves with everything on it.
+
+**Stuck on a task?** Press the yellow **!** next to it on the wall board (point and pull the
+trigger). It shows step-by-step instructions. **EN / UZ** on the board switches the language.
+
+**Walls and furniture are solid.** If you walk into a wall or a bench (for real or with the
+stick), you stop there and a red warning appears in front of you.
+
+## 6. A first experiment (Acids, bases and indicators)
+
+1. Reach for the **HCl** bottle (red label) and hold **Grip**.
+2. Bring its mouth over the middle beaker and slowly **tilt** your hand until it pours. Straighten up
+   to stop. Let go of **Grip**: the bottle goes back to its place.
+3. Grab the **Universal indicator** dropper, hold it over the same beaker and pull the **trigger**
+   two or three times. The liquid turns red: acid.
+4. Do the same with **NaOH** (blue label) in another beaker: it turns purple-blue.
+5. Grab the **pH meter**, lower its tip into a liquid and read the screen on it.
+
+Spills are real: miss the beaker and it splashes on the bench. **Reset bench** on the wall board
+cleans everything up.
+
+## 7. Recording the demo video
+
+- In the headset: press the **Meta button** → **Camera** → **Record video**. Recordings save to the
+  headset; copy them to the PC with a USB cable or through the Meta Horizon app.
+- Or **cast** to a phone or PC so the class (and your video) can see what you see:
+  Meta button → **Cast** → choose the phone or computer.
