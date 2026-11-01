@@ -1,0 +1,485 @@
+// HoloLab XR — Multi-School Virtual Science Platform Prisma Schema
+// Canonical PostgreSQL Schema with Strict School-Level Tenant Isolation
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SchoolStatus {
+  pending
+  active
+  suspended
+  rejected
+}
+
+enum UserStatus {
+  pending
+  active
+  suspended
+  disabled
+}
+
+enum Role {
+  platform_admin
+  school_admin
+  teacher
+  student
+}
+
+enum Department {
+  chemistry
+  biology
+  physics
+}
+
+enum ProductType {
+  reusable_equipment
+  consumable_reagent
+  experiment_bundle
+  digital_kit
+}
+
+enum OrderStatus {
+  pending
+  paid
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  initiated
+  verified
+  failed
+  refunded
+}
+
+enum TransactionType {
+  purchase_credit
+  experiment_consumption
+  spill_loss
+  grant
+  reversal
+}
+
+// ----------------------------------------------------
+// 1. INSTITUTIONS & MEMBERSHIP
+// ----------------------------------------------------
+
+model School {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @db.VarChar(180)
+  slug        String       @unique @db.VarChar(120)
+  email       String       @db.VarChar(255)
+  countryCode String       @db.Char(2)
+  status      SchoolStatus @default(pending)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships  SchoolMembership[]
+  classes      Class[]
+  studentLabs  StudentLab[]
+  studentProfiles StudentProfile[]
+  assignments  Assignment[]
+  orders       Order[]
+
+  @@index([status])
+  @@index([countryCode])
+  @@map("schools")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String?    @unique @db.VarChar(255)
+  username     String?    @unique @db.VarChar(80)
+  passwordHash String?    @map("password_hash")
+  firstName    String     @map("first_name") @db.VarChar(100)
+  lastName     String     @map("last_name") @db.VarChar(100)
+  status       UserStatus @default(pending)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships           SchoolMembership[]
+  studentProfile        StudentProfile?
+  enrolledClasses       ClassStudent[]
+  teacherAssignments    Assignment[]        @relation("TeacherAssignments")
+  gradedSubmissions     Grade[]             @relation("TeacherGrades")
+  orders                Order[]
+  payments              Payment[]
+  inventory             StudentInventory[]
+  inventoryTransactions InventoryTransaction[]
+  experimentAttempts    ExperimentAttempt[]
+  submissions           Submission[]
+  labSessions           LabSession[]
+
+  @@index([email])
+  @@index([username])
+  @@map("users")
+}
+
+model SchoolMembership {
+  id       String   @id @default(uuid()) @db.Uuid
+  schoolId String   @map("school_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     Role
+  status   String   @default("active") @db.VarChar(20)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, userId])
+  @@index([schoolId, role])
+  @@map("school_memberships")
+}
+
+// ----------------------------------------------------
+// 2. ACADEMICS & STUDENTS
+// ----------------------------------------------------
+
+model Class {
+  id           String   @id @default(uuid()) @db.Uuid
+  schoolId     String   @map("school_id") @db.Uuid
+  name         String   @db.VarChar(100)
+  academicYear String?  @map("academic_year") @db.VarChar(20)
+  gradeLevel   String?  @map("grade_level") @db.VarChar(50)
+  status       String   @default("active") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students    ClassStudent[]
+  assignments Assignment[]
+
+  @@unique([schoolId, name, academicYear])
+  @@index([schoolId])
+  @@map("classes")
+}
+
+model ClassStudent {
+  classId       String   @map("class_id") @db.Uuid
+  studentUserId String   @map("student_user_id") @db.Uuid
+  enrolledAt    DateTime @default(now()) @map("enrolled_at") @db.Timestamptz
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [studentUserId], references: [id], onDelete: Cascade)
+
+  @@id([classId, studentUserId])
+  @@map("class_students")
+}
+
+model StudentProfile {
+  userId          String   @id @map("user_id") @db.Uuid
+  schoolId        String   @map("school_id") @db.Uuid
+  admissionNumber String   @map("admission_number") @db.VarChar(80)
+  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  lab    StudentLab?
+
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId])
+  @@map("student_profiles")
+}
+
+// ----------------------------------------------------
+// 3. PERSONAL LABORATORIES & WORKSPACES
+// ----------------------------------------------------
+
+model StudentLab {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @map("student_id") @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  name      String   @default("My Laboratory") @db.VarChar(150)
+  status    String   @default("active") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  student StudentProfile @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  spaces  LabSpace[]
+
+  @@index([schoolId])
+  @@map("student_labs")
+}
+
+model LabSpace {
+  id          String     @id @default(uuid()) @db.Uuid
+  labId       String     @map("lab_id") @db.Uuid
+  department  Department
+  sceneConfig Json       @default("{}") @map("scene_config")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  lab      StudentLab   @relation(fields: [labId], references: [id], onDelete: Cascade)
+  sessions LabSession[]
+
+  @@unique([labId, department])
+  @@map("lab_spaces")
+}
+
+model LabSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  labSpaceId    String    @map("lab_space_id") @db.Uuid
+  studentId     String    @map("student_id") @db.Uuid
+  status        String    @default("active") @db.VarChar(20)
+  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt       DateTime? @map("ended_at") @db.Timestamptz
+  stateSnapshot Json?     @map("state_snapshot")
+
+  labSpace LabSpace            @relation(fields: [labSpaceId], references: [id], onDelete: Cascade)
+  student  User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attempts ExperimentAttempt[]
+
+  @@index([studentId])
+  @@map("lab_sessions")
+}
+
+// ----------------------------------------------------
+// 4. SCIENCE EXPERIMENTS & ATTEMPTS
+// ----------------------------------------------------
+
+model Experiment {
+  id         String     @id @default(uuid()) @db.Uuid
+  department Department
+  slug       String     @unique @db.VarChar(120)
+  title      String     @db.VarChar(180)
+  difficulty String?    @db.VarChar(30)
+  published  Boolean    @default(false)
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  versions    ExperimentVersion[]
+  assignments Assignment[]
+
+  @@map("experiments")
+}
+
+model ExperimentVersion {
+  id                   String   @id @default(uuid()) @db.Uuid
+  experimentId         String   @map("experiment_id") @db.Uuid
+  version              Int
+  definition           Json
+  scientificReferences Json     @default("[]") @map("scientific_references")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  experiment Experiment          @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  attempts   ExperimentAttempt[]
+
+  @@unique([experimentId, version])
+  @@map("experiment_versions")
+}
+
+model ExperimentAttempt {
+  id                  String    @id @default(uuid()) @db.Uuid
+  studentId           String    @map("student_id") @db.Uuid
+  experimentVersionId String    @map("experiment_version_id") @db.Uuid
+  labSessionId        String?   @map("lab_session_id") @db.Uuid
+  status              String    @default("in_progress") @db.VarChar(20)
+  score               Decimal?  @db.Decimal(6, 2)
+  startedAt           DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz
+  resultSummary       Json?     @map("result_summary")
+
+  student           User                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  experimentVersion ExperimentVersion       @relation(fields: [experimentVersionId], references: [id], onDelete: Cascade)
+  labSession        LabSession?             @relation(fields: [labSessionId], references: [id])
+  observations      ExperimentObservation[]
+  submissions       Submission[]
+
+  @@index([studentId])
+  @@map("experiment_attempts")
+}
+
+model ExperimentObservation {
+  id              String   @id @default(uuid()) @db.Uuid
+  attemptId       String   @map("attempt_id") @db.Uuid
+  observationType String   @map("observation_type") @db.VarChar(50)
+  observation     Json
+  recordedAt      DateTime @default(now()) @map("recorded_at") @db.Timestamptz
+
+  attempt ExperimentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@map("experiment_observations")
+}
+
+// ----------------------------------------------------
+// 5. SUPERMARKET, ORDERS & PAYMENTS
+// ----------------------------------------------------
+
+model Product {
+  id            String      @id @default(uuid()) @db.Uuid
+  sku           String      @unique @db.VarChar(80)
+  name          String      @db.VarChar(180)
+  department    Department
+  category      String?     @db.VarChar(100)
+  description   String?
+  assetKey      String?     @map("asset_key")
+  productType   ProductType @map("product_type")
+  priceMinor    BigInt      @map("price_minor")
+  currency      String      @default("NGN") @db.Char(3)
+  stockQuantity Int?        @map("stock_quantity")
+  published     Boolean     @default(false)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  orderItems            OrderItem[]
+  studentInventory      StudentInventory[]
+  inventoryTransactions InventoryTransaction[]
+
+  @@index([department, productType])
+  @@map("products")
+}
+
+model Order {
+  id             String      @id @default(uuid()) @db.Uuid
+  studentId      String      @map("student_id") @db.Uuid
+  schoolId       String      @map("school_id") @db.Uuid
+  orderNumber    String      @unique @map("order_number") @db.VarChar(60)
+  status         OrderStatus @default(pending)
+  subtotalMinor  BigInt      @map("subtotal_minor")
+  totalMinor     BigInt      @map("total_minor")
+  currency       String      @db.Char(3)
+  idempotencyKey String      @map("idempotency_key") @db.VarChar(120)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  student  User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school   School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
+  payments Payment[]
+
+  @@unique([studentId, idempotencyKey])
+  @@index([studentId])
+  @@index([schoolId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String @id @default(uuid()) @db.Uuid
+  orderId             String @map("order_id") @db.Uuid
+  productId           String @map("product_id") @db.Uuid
+  productNameSnapshot String @map("product_name_snapshot") @db.VarChar(180)
+  quantity            Int
+  unitPriceMinor      BigInt @map("unit_price_minor")
+  totalMinor          BigInt @map("total_minor")
+
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product               Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryTransactions InventoryTransaction[]
+
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  orderId           String?       @map("order_id") @db.Uuid
+  studentId         String        @map("student_id") @db.Uuid
+  provider          String        @db.VarChar(40)
+  providerReference String        @unique @map("provider_reference") @db.VarChar(160)
+  amountMinor       BigInt        @map("amount_minor")
+  currency          String        @db.Char(3)
+  status            PaymentStatus @default(initiated)
+  verifiedAt        DateTime?     @map("verified_at") @db.Timestamptz
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  order   Order? @relation(fields: [orderId], references: [id])
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("payments")
+}
+
+// ----------------------------------------------------
+// 6. INVENTORY & LEDGER TRANSACTIONS
+// ----------------------------------------------------
+
+model StudentInventory {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  quantity  Decimal  @default(0) @db.Decimal(14, 3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  student User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, productId])
+  @@index([studentId])
+  @@map("student_inventory")
+}
+
+model InventoryTransaction {
+  id              String          @id @default(uuid()) @db.Uuid
+  studentId       String          @map("student_id") @db.Uuid
+  productId       String          @map("product_id") @db.Uuid
+  orderItemId     String?         @map("order_item_id") @db.Uuid
+  transactionType TransactionType @map("transaction_type")
+  quantityDelta   Decimal         @map("quantity_delta") @db.Decimal(14, 3)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  student   User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id])
+
+  @@index([studentId, productId])
+  @@map("inventory_transactions")
+}
+
+// ----------------------------------------------------
+// 7. TEACHING & ASSIGNMENTS
+// ----------------------------------------------------
+
+model Assignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  schoolId     String    @map("school_id") @db.Uuid
+  classId      String    @map("class_id") @db.Uuid
+  teacherId    String    @map("teacher_id") @db.Uuid
+  experimentId String    @map("experiment_id") @db.Uuid
+  title        String    @db.VarChar(180)
+  dueAt        DateTime? @map("due_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher     User         @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  experiment  Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([schoolId, classId])
+  @@map("assignments")
+}
+
+model Submission {
+  id           String    @id @default(uuid()) @db.Uuid
+  assignmentId String    @map("assignment_id") @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  attemptId    String?   @map("attempt_id") @db.Uuid
+  status       String    @default("submitted") @db.VarChar(30)
+  submittedAt  DateTime? @map("submitted_at") @db.Timestamptz
+
+  assignment Assignment         @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attempt    ExperimentAttempt? @relation(fields: [attemptId], references: [id])
+  grade      Grade?
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@map("submissions")
+}
+
+model Grade {
+  id           String   @id @default(uuid()) @db.Uuid
+  submissionId String   @unique @map("submission_id") @db.Uuid
+  teacherId    String   @map("teacher_id") @db.Uuid
+  score        Decimal  @db.Decimal(6, 2)
+  feedback     String?
+  gradedAt     DateTime @default(now()) @map("graded_at") @db.Timestamptz
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  teacher    User       @relation("TeacherGrades", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("grades")
+}
