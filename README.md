@@ -45,8 +45,9 @@ HoloLab XR is actively expanding from chemistry into human biology and physics. 
 
 ## Try it
 
-**Live: https://muxsinjon.github.io/virtual-lab-vr/** (any browser; on a Meta Quest, open it in the
-Quest Browser and press **Enter the lab**).
+- 🌐 **Live WebXR Application:** [https://hololab-xr.vercel.app/](https://hololab-xr.vercel.app/) (any browser on phone, laptop, or Meta Quest browser).
+- ⚗️ **Qualitative Analysis Practical:** [https://hololab-xr.vercel.app/?topic=qualitativeAnalysis](https://hololab-xr.vercel.app/?topic=qualitativeAnalysis)
+- 🏫 **Institutional Schools Registry:** [https://hololab-xr.vercel.app/schools.html](https://hololab-xr.vercel.app/schools.html)
 
 **On a computer or phone**: open the site. Click an item to pick it up: its spout or tip follows the
 cursor anywhere, and the mouse wheel (or ↑/↓) raises and lowers it. Hold the mouse button to pour; right-click
@@ -101,4 +102,3 @@ To add a topic, create `src/topics/<name>.ts` exporting a `TopicDef` (see `topic
 - Our team already runs a 2D/3D video and simulator site for Uzbek school science,
   [virtual-lab.uz](https://www.virtual-lab.uz). The idea comes from that work, but this VR app is a
   new codebase written during the hackathon. It shares no code with that site.
->>>>>>> 0f5f46f (chore: baseline HoloLab XR simulation engine and professional classroom design)
