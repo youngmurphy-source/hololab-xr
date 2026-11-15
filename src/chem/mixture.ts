@@ -28,4 +28,5 @@ export function change(m: Mixture, key: string, delta: number) {
 export interface Tint {
   color: number;
   opacity: number;
+  transmission?: number;
 }

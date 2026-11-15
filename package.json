@@ -12,6 +12,7 @@
     "serve:vr": "vite build && vite preview --host --mode vr"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.2.0",
     "three": "^0.180.0"
   },
   "devDependencies": {

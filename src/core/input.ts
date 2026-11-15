@@ -5,7 +5,7 @@ import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { audio } from './audio';
 import type { Lab } from './lab';
 import type { WorldPanel } from './panel';
-import { BENCH, OBSTACLES, ROOM } from './room';
+import { BENCH, OBSTACLES } from './room';
 import { HelpCard, Warning } from './help';
 import type { Holder, Tool } from './tools';
 
@@ -57,7 +57,7 @@ function shown(o: THREE.Object3D | null) {
   for (; o; o = o.parent) if (!o.visible) return false;
   return true;
 }
-const POUR_TILT = 2.75;
+const POUR_TILT = 1.75;
 
 export class Input {
   heldPointer: Tool | null = null;
@@ -106,7 +106,7 @@ export class Input {
           forward.y = 0;
           forward.normalize();
           const right = new THREE.Vector3(-forward.z, 0, forward.x);
-          const step = 0.16;
+          const step = e.shiftKey ? 0.45 : 0.22;
           const delta = new THREE.Vector3();
           if (k === 'w' || k === 'arrowup') delta.addScaledVector(forward, step);
           if (k === 's' || k === 'arrowdown') delta.addScaledVector(forward, -step);
@@ -163,8 +163,13 @@ export class Input {
   useStart() {
     const tool = this.heldPointer;
     if (!tool) return;
-    if (tool.use === 'drip') this.host.lab().drip(tool);
-    else this.useActive = true;
+    const lab = this.host.lab();
+    if (tool.use === 'drip' && lab) {
+      lab.drip(tool);
+      this.host.onHoldChange?.(tool);
+    } else {
+      this.useActive = true;
+    }
   }
 
   useEnd() {
@@ -178,6 +183,14 @@ export class Input {
   /** Whatever the current ray hits first: the panel, a button on the bench, or (on screens) a tool. */
   private pick(tools = true) {
     const lab = this.host.lab();
+    if (!lab) {
+      const hits = this.raycaster.intersectObjects([this.host.panel.mesh], true);
+      for (const h of hits) {
+        if (!shown(h.object)) continue;
+        if (h.object === this.host.panel.mesh) return { distance: h.distance, panelUv: h.uv ?? null };
+      }
+      return null;
+    }
     const targets: THREE.Object3D[] = [this.host.panel.mesh, ...lab.pressables.map((p) => p.mesh)];
     if (tools) for (const t of lab.tools) if (t.held === null) targets.push(t.root);
     const hits = this.raycaster.intersectObjects(targets, true);
@@ -185,7 +198,7 @@ export class Input {
       if (!shown(h.object)) continue;
       if (h.object === this.host.panel.mesh) return { distance: h.distance, panelUv: h.uv ?? null };
       const press = lab.pressables.find((p) => p.mesh === h.object);
-      if (press) return { distance: h.distance, press: press.onPress };
+      if (press) return { distance: h.distance, press: () => press.onPress(h.uv ?? null), pressable: press, uv: h.uv ?? null };
       let o: THREE.Object3D | null = h.object;
       while (o && !o.userData.tool) o = o.parent;
       if (o) return { distance: h.distance, tool: o.userData.tool as Tool };
@@ -231,7 +244,7 @@ export class Input {
         hand.heldBy = null;
       }
     }
-    lab.group.attach(tool.root);
+    if (lab) lab.group.attach(tool.root);
     tool.held = null;
     tool.tilt = 0;
     if (goHome) {
@@ -270,6 +283,9 @@ export class Input {
     this.raycaster.setFromCamera(this.ndc, this.host.camera);
     const hit = this.pick();
     const onButton = this.host.panel.pointAt(hit?.panelUv ?? null);
+    if (hit?.pressable?.onPointAt) {
+      hit.pressable.onPointAt(hit.uv ?? null);
+    }
     this.hovered = hit?.tool ?? null;
     this.canvas.style.cursor = hit?.tool ? 'grab' : hit?.press || onButton ? 'pointer' : '';
   }
@@ -280,36 +296,105 @@ export class Input {
    * it towards containers: you aim it yourself, and tilting pivots around the spout.
    */
   private placeHeld(tool: Tool, dt: number) {
+    const parent = tool.root.parent;
+    if (!parent) return;
+
+    parent.updateMatrixWorld(true);
+    const parentInv = parent.matrixWorld.clone().invert();
+
     const cam = this.host.camera;
     this.raycaster.setFromCamera(this.ndc, cam);
-    const plane = new THREE.Plane(UP, -this.tipY);
-    const p = new THREE.Vector3();
-    if (!this.raycaster.ray.intersectPlane(plane, p)) p.copy(tool.tipWorld(new THREE.Vector3()));
-    p.x = THREE.MathUtils.clamp(p.x, -1.6, 1.6);
-    p.z = THREE.MathUtils.clamp(p.z, -1.3, 0.8);
 
-    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
-    right.y = 0;
-    right.normalize();
-    const fwd = new THREE.Vector3().crossVectors(UP, right).normalize();
-    // Holding the button keeps tipping it further, so the longer you hold, the faster it pours.
-    if (tool.use === 'pour' && this.useActive) tool.tilt = Math.min(POUR_TILT, tool.tilt + dt * (tool.tilt < 0.9 ? 2.2 : 0.75));
-    else tool.tilt = Math.max(0, tool.tilt - dt * 4);
-    const q = new THREE.Quaternion()
-      .setFromAxisAngle(fwd, tool.tilt)
-      .multiply(new THREE.Quaternion().setFromAxisAngle(UP, Math.atan2(-right.z, right.x)))
+    // Transform camera ray into the lab container's local coordinate system
+    const localRay = this.raycaster.ray.clone().applyMatrix4(parentInv);
+
+    // In local space, the height plane for the tool tip (relative to bench top):
+    const localPlane = new THREE.Plane(UP, -this.tipY);
+    const localP = new THREE.Vector3();
+
+    if (!localRay.intersectPlane(localPlane, localP)) {
+      localP.copy(tool.homePos);
+      localP.y = this.tipY;
+    }
+
+    // Clamp within the bench working area (local coordinates)
+    localP.x = THREE.MathUtils.clamp(localP.x, -1.2, 1.2);
+    localP.z = THREE.MathUtils.clamp(localP.z, BENCH.back - 0.35, BENCH.front + 0.35);
+
+    // Smart magnetic alignment for droppers & pouring vessels over open containers
+    const lab = this.host.lab();
+    if (lab && (tool.use === 'drip' || tool.use === 'pour')) {
+      const vMouth = new THREE.Vector3();
+      let bestVessel: { localMouth: THREE.Vector3; vessel: import('./parts').Vessel } | null = null;
+      let bestDist = Infinity;
+
+      for (const v of lab.vessels) {
+        if (v.infinite || v === tool.vessel) continue;
+        v.mouthWorld(vMouth);
+        const localMouth = vMouth.clone().applyMatrix4(parentInv);
+        const hDist = Math.hypot(localP.x - localMouth.x, localP.z - localMouth.z);
+        const rayDist = Math.sqrt(localRay.distanceSqToPoint(localMouth));
+
+        const snapRadius = tool.use === 'drip' ? 0.085 : 0.095;
+        if ((hDist < snapRadius || rayDist < snapRadius * 0.9) && hDist < bestDist) {
+          bestDist = hDist;
+          bestVessel = { localMouth, vessel: v };
+        }
+      }
+
+      if (bestVessel) {
+        tool.hoveredVessel = bestVessel.vessel;
+        const snapRadius = tool.use === 'drip' ? 0.085 : 0.095;
+        const factor = Math.pow(Math.max(0, 1 - bestDist / snapRadius), 1.6);
+        localP.x = THREE.MathUtils.lerp(localP.x, bestVessel.localMouth.x, factor * 0.94);
+        localP.z = THREE.MathUtils.lerp(localP.z, bestVessel.localMouth.z, factor * 0.94);
+        if (tool.use === 'drip') {
+          const targetY = bestVessel.localMouth.y + 0.045;
+          localP.y = THREE.MathUtils.lerp(localP.y, targetY, factor * 0.85);
+        } else if (tool.use === 'pour') {
+          const targetY = bestVessel.localMouth.y + 0.032;
+          localP.y = THREE.MathUtils.lerp(localP.y, targetY, factor * 0.88);
+        }
+      } else {
+        tool.hoveredVessel = null;
+      }
+    }
+
+    // Camera right & forward vectors relative to parent's local orientation
+    const camWorldRight = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+    const parentWorldQuat = new THREE.Quaternion();
+    parent.getWorldQuaternion(parentWorldQuat);
+    const parentInvQuat = parentWorldQuat.clone().invert();
+
+    const localRight = camWorldRight.applyQuaternion(parentInvQuat);
+    localRight.y = 0;
+    if (localRight.lengthSq() < 1e-6) localRight.set(1, 0, 0);
+    else localRight.normalize();
+
+    const localFwd = new THREE.Vector3().crossVectors(UP, localRight).normalize();
+
+    // Holding button tips the tool to pour
+    if (tool.use === 'pour' && this.useActive) {
+      tool.tilt = Math.min(POUR_TILT, tool.tilt + dt * (tool.tilt < 0.9 ? 2.2 : 0.75));
+    } else {
+      tool.tilt = Math.max(0, tool.tilt - dt * 4);
+    }
+
+    const localQ = new THREE.Quaternion()
+      .setFromAxisAngle(localFwd, tool.tilt)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(UP, Math.atan2(-localRight.z, localRight.x)))
       .multiply(tool.desktopQuat);
 
-    const pos = p.sub(tool.tip.clone().applyQuaternion(q));
-    tool.root.parent?.worldToLocal(pos); // the bench may be raised or lowered
+    const pos = localP.sub(tool.tip.clone().applyQuaternion(localQ));
     const k = 1 - Math.exp(-dt * 20);
     tool.root.position.lerp(pos, k);
-    tool.root.quaternion.slerp(q, k);
+    tool.root.quaternion.slerp(localQ, k);
+    tool.root.updateMatrixWorld(true);
   }
 
   /** Raise or lower the held tool (mouse wheel, arrow keys, or the on-screen buttons). */
   nudgeHeight(dy: number) {
-    this.tipY = THREE.MathUtils.clamp(this.tipY + dy, 0.03, BENCH.top + 0.75);
+    this.tipY = THREE.MathUtils.clamp(this.tipY + dy, BENCH.top + 0.05, BENCH.top + 0.75);
   }
 
   // ---- VR controllers and hands ----
@@ -405,26 +490,41 @@ export class Input {
     let pushX = 0;
     let pushZ = 0;
     let what: 'wall' | 'furniture' | null = null;
-    if (pos.x < ROOM.left + pad) pushX = ROOM.left + pad - pos.x;
-    if (pos.x > ROOM.right - pad) pushX = ROOM.right - pad - pos.x;
-    if (pos.z < ROOM.back + pad) pushZ = ROOM.back + pad - pos.z;
-    if (pos.z > ROOM.front - pad) pushZ = ROOM.front - pad - pos.z;
-    if (pushX || pushZ) what = 'wall';
-    else {
-      const lean = 0.28; // how far you may lean over furniture
-      for (const [x0, x1, z0, z1] of OBSTACLES) {
-        const ix0 = x0 + lean;
-        const ix1 = x1 - lean;
-        const iz0 = z0 + lean;
-        const iz1 = z1 - lean;
-        if (pos.x <= ix0 || pos.x >= ix1 || pos.z <= iz0 || pos.z >= iz1) continue;
-        // Push out through the nearest side.
-        const out = [ix0 - pos.x, ix1 - pos.x, iz0 - pos.z, iz1 - pos.z];
-        const i = out.map(Math.abs).indexOf(Math.min(...out.map(Math.abs)));
-        if (i < 2) pushX = out[i];
-        else pushZ = out[i];
-        what = 'furniture';
-        break;
+
+    // Entire School Campus & Garden boundary (70m x 70m)
+    const campusMin = -33;
+    const campusMax = 33;
+    if (pos.x < campusMin + pad) pushX = campusMin + pad - pos.x;
+    if (pos.x > campusMax - pad) pushX = campusMax - pad - pos.x;
+    if (pos.z < campusMin + pad) pushZ = campusMin + pad - pos.z;
+    if (pos.z > campusMax - pad) pushZ = campusMax - pad - pos.z;
+    if (pushX || pushZ) {
+      what = 'wall';
+    } else {
+      // Check building entrance thresholds and interior obstacles
+      const inChemLab = pos.z < -11.8 && Math.abs(pos.x) < 5.2;
+      const inChemDoor = pos.z >= -12.4 && pos.z <= -11.2 && Math.abs(pos.x) < 1.4;
+      const inBioDoor = pos.x >= -18.2 && pos.x <= -16.8 && Math.abs(pos.z - 4.0) < 1.4;
+      const inPhysicsDoor = pos.x >= 16.8 && pos.x <= 18.2 && Math.abs(pos.z - 4.0) < 1.4;
+
+      // Allow free pass through open doors
+      if (!inChemDoor && !inBioDoor && !inPhysicsDoor && inChemLab) {
+        // Chemistry lab local obstacles (bench, apparatus)
+        const localZ = pos.z - (-16);
+        const lean = 0.28;
+        for (const [x0, x1, z0, z1] of OBSTACLES) {
+          const ix0 = x0 + lean;
+          const ix1 = x1 - lean;
+          const iz0 = z0 + lean;
+          const iz1 = z1 - lean;
+          if (pos.x <= ix0 || pos.x >= ix1 || localZ <= iz0 || localZ >= iz1) continue;
+          const out = [ix0 - pos.x, ix1 - pos.x, iz0 - localZ, iz1 - localZ];
+          const i = out.map(Math.abs).indexOf(Math.min(...out.map(Math.abs)));
+          if (i < 2) pushX = out[i];
+          else pushZ = out[i];
+          what = 'furniture';
+          break;
+        }
       }
     }
     if (what) {
@@ -494,11 +594,13 @@ export class Input {
 
   /** A free tool within reach of the hand, nearest first. */
   private nearTool(hand: Hand) {
+    const lab = this.host.lab();
+    if (!lab) return null;
     const g = new THREE.Vector3().setFromMatrixPosition(hand.grip.matrixWorld);
     const p = new THREE.Vector3();
     let best: Tool | null = null;
     let bestD = Infinity;
-    for (const t of this.host.lab().tools) {
+    for (const t of lab.tools) {
       if (t.held !== null) continue;
       const d = t.gripWorld(p).distanceTo(g);
       if (d < t.grabRadius && d < bestD) {
@@ -512,7 +614,11 @@ export class Input {
   private press(hand: Hand, button: 'select' | 'squeeze') {
     audio.unlock();
     if (hand.held) {
-      if (hand.heldBy !== button && hand.held.use === 'drip') this.host.lab().drip(hand.held);
+      const lab = this.host.lab();
+      if (hand.heldBy !== button && hand.held.use === 'drip' && lab) {
+        lab.drip(hand.held);
+        this.host.onHoldChange?.(hand.held);
+      }
       return;
     }
     this.aim(hand);
@@ -571,6 +677,9 @@ export class Input {
       hand.line.visible = !!hit;
       if (hit) hand.line.scale.z = hit.distance;
       if (hit?.panelUv) panelUv = hit.panelUv;
+      if (hit?.pressable?.onPointAt) {
+        hit.pressable.onPointAt(hit.uv ?? null);
+      }
       this.hovered ??= near;
     }
     this.host.panel.pointAt(panelUv);

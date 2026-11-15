@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="HoloLab XR is an immersive science learning laboratory for chemistry and human biology, available in VR and in the browser." />
     <title>HoloLab XR | Immersive Science Lab</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚗️</text></svg>" />
+    <link rel="icon" type="image/svg+xml" href="/assets/hololab-logo.svg" />
     <style>
       :root {
         --ink: #eef4f7;
@@ -23,9 +23,12 @@
       header { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; pointer-events: none; }
       header > * { pointer-events: auto; }
       .brand { display: flex; gap: 12px; align-items: center; padding: 10px 16px 10px 12px; }
-      .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; font-size: 22px; }
+      .logo { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+      .logo img, .logo svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45)); }
       .brand h1 { margin: 0; font-size: 17px; letter-spacing: 0.02em; }
       .brand p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+      .header-right-column { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; max-width: min(900px, calc(100vw - 360px)); pointer-events: none; }
+      .header-right-column > * { pointer-events: auto; }
       .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; padding: 8px; }
       button, select { font: inherit; font-size: 14px; color: var(--ink); background: #2c4458; border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer; }
       button:hover, select:hover { background: #3d5a73; }
@@ -46,7 +49,7 @@
       #hint { font-size: 12.5px; padding: 8px 12px; color: var(--muted); max-width: 720px; }
       #tally { font-size: 12.5px; padding: 8px 12px; max-width: 46vw; }
       #tally b { color: var(--warn); }
-      #tasks { position: fixed; right: 12px; top: 84px; width: 310px; padding: 4px 16px 12px; }
+      #tasks { position: relative; right: auto; top: auto; width: 320px; padding: 4px 16px 12px; max-height: calc(100vh - 180px); overflow-y: auto; }
       #tasks summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 0 6px; font-weight: 700; font-size: 16px; }
       #tasks summary::-webkit-details-marker { display: none; }
       #taskCount { font-size: 13px; color: var(--accent-hot); font-weight: 600; white-space: nowrap; }
@@ -65,19 +68,527 @@
       #taskList li.next::before { border-color: var(--warn); }
       #taskInfo { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 13.5px; line-height: 1.45; color: #d7e3ea; }
       body.in-xr header, body.in-xr footer, body.in-xr #hold, body.in-xr #tasks { display: none; }
-      #launch { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 50% 40%, rgba(31, 61, 74, 0.82), rgba(10, 18, 26, 0.95)); }
-      #launch[hidden] { display: none; }
-      .launch-card { text-align: center; color: var(--ink); max-width: 760px; }
-      .launch-logo { width: 110px; height: 110px; margin: 0 auto 18px; border-radius: 28px; font-size: 64px; }
-      .launch-card h1 { margin: 0; font-size: 56px; }
-      .launch-card > p { margin: 10px 0 0; font-size: 24px; color: var(--muted); }
-      .launch-buttons { margin-top: 36px; display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
-      .launch-buttons button { font-size: 30px; padding: 22px 40px; border-radius: 20px; min-width: 300px; }
-      .launch-buttons button.primary { box-shadow: 0 10px 40px rgba(42, 157, 138, 0.45); }
-      .launch-buttons button:disabled { opacity: 0.45; cursor: default; font-size: 22px; }
-      @media (max-width: 720px) { .launch-card h1 { font-size: 40px; } .launch-buttons button { font-size: 22px; min-width: 0; width: 100%; } }
-      .launch-card .launch-hint { margin-top: 26px; font-size: 22px; line-height: 1.5; }
-      #launchLang { margin-top: 22px; font-size: 20px; padding: 12px 22px; }
+      
+      /* =========================================================================
+         HoloLab XR Next-Gen Landing Page & Front App Styles
+         ========================================================================= */
+      #launch {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(14, 165, 233, 0.22), transparent 70%),
+                    radial-gradient(circle at 10% 85%, rgba(99, 102, 241, 0.16), transparent 50%),
+                    radial-gradient(circle at 90% 70%, rgba(16, 185, 129, 0.14), transparent 50%),
+                    #070d14;
+        color: #f1f5f9;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        padding: 0 0 80px 0;
+        scroll-behavior: smooth;
+      }
+      #launch[hidden] { display: none !important; }
+
+      .landing-nav-wrap {
+        position: sticky;
+        top: 0;
+        z-index: 60;
+        background: rgba(7, 13, 20, 0.88);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .landing-nav {
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      .landing-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .landing-logo {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .landing-logo img, .landing-logo svg {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.55));
+      }
+      .landing-brand-text h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        background: linear-gradient(90deg, #ffffff, #93c5fd);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .landing-brand-text p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      .landing-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .landing-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        font-size: 12.5px;
+        color: #38bdf8;
+        font-weight: 600;
+      }
+      .landing-pill .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 8px #34d399;
+      }
+
+      /* Hero Section */
+      .landing-hero {
+        max-width: 1360px;
+        margin: 40px auto 0;
+        padding: 0 24px;
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 40px;
+        align-items: center;
+      }
+      .hero-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .hero-badge {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        color: #7dd3fc;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .hero-title {
+        font-size: 52px;
+        line-height: 1.12;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        margin: 0;
+        color: #ffffff;
+      }
+      .hero-title span {
+        background: linear-gradient(135deg, #38bdf8 0%, #34d399 50%, #facc15 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero-desc {
+        font-size: 18px;
+        line-height: 1.6;
+        color: #cbd5e1;
+        margin: 0;
+      }
+      .hero-ctas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 10px;
+      }
+      .hero-btn {
+        padding: 16px 28px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 0;
+        text-decoration: none;
+      }
+      .hero-btn.primary-glow {
+        background: linear-gradient(135deg, #0284c7, #0d9488);
+        color: #ffffff;
+        box-shadow: 0 0 30px rgba(14, 165, 233, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      }
+      .hero-btn.primary-glow:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 40px rgba(14, 165, 233, 0.65);
+      }
+      .hero-btn.glass-btn {
+        background: rgba(30, 41, 59, 0.7);
+        color: #f1f5f9;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(8px);
+      }
+      .hero-btn.glass-btn:hover {
+        background: rgba(51, 65, 85, 0.8);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+      .hero-btn.dark-btn {
+        background: rgba(15, 23, 42, 0.8);
+        color: #facc15;
+        border: 1px solid rgba(250, 204, 21, 0.3);
+      }
+      .hero-btn.dark-btn:hover {
+        background: rgba(30, 41, 59, 0.9);
+        border-color: #facc15;
+        transform: translateY(-2px);
+      }
+
+      .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-top: 14px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .stat-item h3 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 800;
+        color: #38bdf8;
+      }
+      .stat-item p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: #94a3b8;
+        line-height: 1.35;
+      }
+
+      /* Holographic Showcase Carousel */
+      .hero-showcase {
+        position: relative;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 24px;
+        padding: 16px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(14, 165, 233, 0.15);
+        backdrop-filter: blur(12px);
+      }
+      .showcase-tabs {
+        display: flex;
+        gap: 6px;
+        background: rgba(2, 6, 23, 0.6);
+        padding: 6px;
+        border-radius: 14px;
+        margin-bottom: 14px;
+      }
+      .showcase-tab {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: transparent;
+        border: 0;
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .showcase-tab.active {
+        background: #0284c7;
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+      }
+      .showcase-stage {
+        position: relative;
+        width: 100%;
+        height: 380px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #030712;
+      }
+      .showcase-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 0.4s ease, transform 0.6s ease;
+        display: none;
+      }
+      .showcase-img.active {
+        display: block;
+      }
+      .showcase-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(7, 13, 20, 0.94) 0%, rgba(7, 13, 20, 0.3) 50%, transparent 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 24px;
+      }
+      .showcase-badge {
+        align-self: flex-start;
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: rgba(56, 189, 248, 0.2);
+        color: #7dd3fc;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .showcase-title {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .showcase-desc {
+        margin: 0 0 16px;
+        font-size: 13.5px;
+        color: #cbd5e1;
+        line-height: 1.45;
+      }
+      .showcase-quick-btn {
+        align-self: flex-start;
+        padding: 10px 18px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #0ea5e9, #10b981);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 13.5px;
+        border: 0;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 16px rgba(14, 165, 233, 0.4);
+      }
+
+      /* Featured 3-Department Grid */
+      .landing-section {
+        max-width: 1360px;
+        margin: 80px auto 0;
+        padding: 0 24px;
+      }
+      .section-header {
+        text-align: center;
+        max-width: 780px;
+        margin: 0 auto 44px;
+      }
+      .section-tag {
+        color: #38bdf8;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .section-header h2 {
+        font-size: 38px;
+        font-weight: 900;
+        color: #ffffff;
+        margin: 8px 0 14px;
+      }
+      .section-header p {
+        font-size: 16px;
+        color: #94a3b8;
+        line-height: 1.6;
+        margin: 0;
+      }
+
+      .modules-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+      }
+      .module-card {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      }
+      .module-card:hover {
+        transform: translateY(-6px);
+        border-color: rgba(56, 189, 248, 0.4);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(14, 165, 233, 0.15);
+      }
+      .module-thumb {
+        position: relative;
+        width: 100%;
+        height: 220px;
+        background: #020617;
+        overflow: hidden;
+      }
+      .module-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+      }
+      .module-card:hover .module-thumb img {
+        transform: scale(1.05);
+      }
+      .module-badge {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        font-size: 11px;
+        font-weight: 700;
+        color: #38bdf8;
+      }
+      .module-body {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        justify-content: space-between;
+      }
+      .module-body h3 {
+        margin: 0 0 10px;
+        font-size: 21px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .module-body p {
+        margin: 0 0 18px;
+        font-size: 14px;
+        color: #94a3b8;
+        line-height: 1.55;
+      }
+      .module-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .module-features li {
+        font-size: 13px;
+        color: #cbd5e1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .module-features li::before {
+        content: '✓';
+        color: #34d399;
+        font-weight: 900;
+      }
+      .module-action-btn {
+        width: 100%;
+        padding: 13px 20px;
+        border-radius: 12px;
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+      }
+      .module-action-btn:hover {
+        background: #0284c7;
+        border-color: #38bdf8;
+        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+      }
+
+      /* Architecture Features Row */
+      .features-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-top: 50px;
+      }
+      .feature-box {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 22px;
+      }
+      .feature-box .icon {
+        font-size: 28px;
+        margin-bottom: 12px;
+      }
+      .feature-box h4 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .feature-box p {
+        margin: 0;
+        font-size: 13px;
+        color: #94a3b8;
+        line-height: 1.5;
+      }
+
+      /* Landing Footer */
+      .landing-footer {
+        max-width: 1360px;
+        margin: 80px auto 0;
+        padding: 30px 24px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        color: #64748b;
+        font-size: 13px;
+      }
+
+      @media (max-width: 1024px) {
+        .landing-hero { grid-template-columns: 1fr; }
+        .modules-grid { grid-template-columns: 1fr; max-width: 580px; margin: 0 auto; }
+        .features-row { grid-template-columns: 1fr 1fr; }
+      }
+      @media (max-width: 640px) {
+        .hero-title { font-size: 36px; }
+        .hero-stats { grid-template-columns: 1fr 1fr; }
+        .features-row { grid-template-columns: 1fr; }
+        .landing-nav { flex-direction: column; align-items: stretch; }
+        .landing-nav-actions { justify-content: space-between; }
+      }
+
       #rec.recording { background: #c62828; font-weight: 700; }
       #rec.recording:hover { background: #e0453a; }
       #studentPill { font-size: 13px; font-weight: 600; padding: 8px 14px; background: rgba(30, 58, 95, 0.85); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
@@ -104,11 +615,35 @@
       .inventory-card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 14px; }
       .inventory-card h4 { margin: 0 0 4px; font-size: 15px; }
       .inventory-card .qty { font-size: 20px; font-weight: 800; color: #34d399; }
-      .report-meta { background: rgba(0, 0, 0, 0.25); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+      .report-meta { background: rgba(0, 0, 0, 0.25); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; border: 1px solid rgba(56, 189, 248, 0.2); }
       .report-section { margin-bottom: 20px; }
-      .report-section h3 { margin: 0 0 8px; font-size: 16px; color: var(--warn); }
-      .telemetry-box { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 13px; line-height: 1.6; color: #e2e8f0; }
-      .modal-footer { display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+      .report-section h3 { margin: 0 0 8px; font-size: 16px; color: var(--warn); display: flex; align-items: center; justify-content: space-between; }
+      .telemetry-box { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 13px; line-height: 1.6; color: #e2e8f0; max-height: 220px; overflow-y: auto; }
+      .telemetry-table { width: 100%; border-collapse: collapse; font-family: system-ui, sans-serif; font-size: 12px; }
+      .telemetry-table th { background: rgba(15, 23, 42, 0.85); color: #94a3b8; text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-weight: 700; text-transform: uppercase; font-size: 11px; }
+      .telemetry-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #cbd5e1; }
+      .telemetry-table tr:hover td { background: rgba(56, 189, 248, 0.05); }
+      .telemetry-badge { padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+      .telemetry-badge.verified { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+      .telemetry-badge.milestone { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+      .telemetry-badge.nominal { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #0284c7; }
+      .report-signature-card { background: rgba(10, 20, 38, 0.75); border: 1.5px solid #0284c7; border-radius: 12px; padding: 14px 18px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-top: 16px; }
+      .report-qr-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; padding: 8px; border-radius: 8px; border: 2px solid #38bdf8; }
+      .report-qr-wrap canvas { display: block; width: 100px; height: 100px; }
+      .report-qr-wrap span { font-size: 9px; font-weight: 800; color: #0f172a; margin-top: 4px; text-transform: uppercase; }
+      .signature-details h4 { margin: 0 0 4px; font-size: 14px; color: #38bdf8; }
+      .signature-hash { font-family: monospace; font-size: 11px; color: #34d399; word-break: break-all; margin: 4px 0; }
+      .examiner-stamp { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; font-weight: 700; font-size: 11px; margin-top: 6px; }
+      .modal-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); gap: 10px; }
+      .modal-footer-actions { display: flex; gap: 8px; }
+      @media print {
+        header, footer, #app, #toast, .modal-close, .modal-footer { display: none !important; }
+        .modal-backdrop { position: static !important; background: none !important; }
+        .modal-card { max-width: 100% !important; border: none !important; box-shadow: none !important; color: #000 !important; background: #fff !important; }
+        .report-meta, .telemetry-box, .report-signature-card { color: #000 !important; border-color: #cbd5e1 !important; background: #f8fafc !important; }
+        .telemetry-table th { color: #000 !important; background: #e2e8f0 !important; }
+        .telemetry-table td { color: #1e293b !important; }
+      }
       @media (max-width: 720px) {
         .brand p { display: none; }
         .brand { padding: 8px 12px 8px 8px; }
@@ -129,44 +664,227 @@
     <div id="app"></div>
     <!-- On a headset, the page is just a doorway: one big button straight into the lab. -->
     <div id="launch">
-      <div class="launch-card">
-        <div class="logo launch-logo" aria-hidden="true">⚗️</div>
-        <h1 data-t="app.title">HoloLab XR</h1>
-        <p data-t="app.tagline"></p>
-        <div class="launch-buttons">
-          <button id="launchBtn" class="primary" data-t="ui.enterVRLab"></button>
-          <button id="launchScreen" data-t="ui.enterScreen"></button>
+      <!-- Sticky Navigation Bar -->
+      <div class="landing-nav-wrap">
+        <div class="landing-nav">
+          <div class="landing-brand">
+            <div class="landing-logo" aria-hidden="true"><img src="/assets/hololab-logo.svg" alt="HoloLab XR Logo" /></div>
+            <div class="landing-brand-text">
+              <h1>HoloLab XR</h1>
+              <p>Next-Gen Spatial Science & Medical Simulation</p>
+            </div>
+            <div class="landing-pill"><span class="dot"></span> WebXR 2.0 Live</div>
+          </div>
+          <div class="landing-nav-actions">
+            <a href="schools.html" class="hero-btn dark-btn" style="padding: 8px 16px; font-size: 13.5px; text-decoration: none; color: #ffffff; display: inline-flex; align-items: center; gap: 6px;">✦ Registered Schools</a>
+            <button id="landingBtnHandTracking" class="hero-btn dark-btn" style="padding: 8px 16px; font-size: 13.5px;">🖐️ Hand Tracking</button>
+            <button id="launchBtn" class="hero-btn primary-glow" style="padding: 8px 20px; font-size: 13.5px;" data-t="ui.enterVRLab">🥽 Launch in VR</button>
+          </div>
         </div>
-        <p class="launch-hint" data-t="ui.launchHint"></p>
-        <button id="launchLang" data-t="ui.lang"></button>
       </div>
+
+      <!-- Hero Section -->
+      <section class="landing-hero">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <span>✨</span> Next-Generation WebXR Platform
+          </div>
+          <h1 class="hero-title">
+            Where Virtual Reality Meets <span>Hands-On Science & Anatomy</span>
+          </h1>
+          <p class="hero-desc">
+            Explore authentic volumetric chemistry titration, inspect a 30-structure 3D human musculoskeletal hologram with spatial callouts, and simulate cardiac electrophysiology with zero hazard and certified institutional telemetry.
+          </p>
+          <div class="hero-ctas">
+            <button id="launchScreen" class="hero-btn primary-glow">
+              <span>🖥️ Enter 3D Desktop Lab</span>
+            </button>
+            <button class="hero-btn glass-btn" onclick="document.getElementById('modulesSection').scrollIntoView({ behavior: 'smooth' })">
+              <span>Explore Curriculum Modules ↓</span>
+            </button>
+          </div>
+          <p class="launch-hint" data-t="ui.launchHint" style="font-size: 13.5px; color: #94a3b8; margin: 0; line-height: 1.5;"></p>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <h3>30+</h3>
+              <p>Anatomical Structures & Interactive Callouts</p>
+            </div>
+            <div class="stat-item">
+              <h3>9</h3>
+              <p>Authentic Chemical Reagents & GHS Standards</p>
+            </div>
+            <div class="stat-item">
+              <h3>0%</h3>
+              <p>Physical Hazard, Chemical Waste or Disposal Cost</p>
+            </div>
+            <div class="stat-item">
+              <h3>100%</h3>
+              <p>WebXR Ready: Quest 2/3/Pro, Vision Pro & Browser</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Holographic Showcase -->
+        <div class="hero-showcase">
+          <div class="showcase-tabs">
+            <button class="showcase-tab active" data-slide="0">🧪 Chemistry Synthesis</button>
+            <button class="showcase-tab" data-slide="1">🧬 3D Human Anatomy</button>
+            <button class="showcase-tab" data-slide="2">🫀 Medical Physiology</button>
+          </div>
+          <div class="showcase-stage" id="showcaseStage">
+            <!-- Slide 0: Chemistry -->
+            <img class="showcase-img active" src="/assets/landing/hero-chemistry-vr.png" alt="VR Chemistry Lab and Molecular Holograms" data-index="0" />
+            <!-- Slide 1: Anatomy -->
+            <img class="showcase-img" src="/assets/landing/hero-anatomy-vr.png" alt="3D Human Musculoskeletal Anatomy Hologram" data-index="1" />
+            <!-- Slide 2: Physiology -->
+            <img class="showcase-img" src="/assets/landing/hero-physiology-vr.png" alt="Medical VR Diagnostics & Physiology Workbench" data-index="2" />
+
+            <div class="showcase-overlay" id="showcaseOverlay">
+              <span class="showcase-badge" id="slideBadge">CHEMISTRY LABORATORY · ROOM 304</span>
+              <h2 class="showcase-title" id="slideTitle">Volumetric Molecular Synthesis & Reactions</h2>
+              <p class="showcase-desc" id="slideDesc">Perform acid-base neutralisation, gas evolution, and inspect molecular lattices with Beer-Lambert optical transmission.</p>
+              <button class="showcase-quick-btn" id="slideBtn">Launch Interactive Lab ➔</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3-Department Curriculum Modules Grid -->
+      <section class="landing-section" id="modulesSection">
+        <div class="section-header">
+          <span class="section-tag">Interactive Academic Curriculum</span>
+          <h2>Explore Immersive Virtual Reality Departments</h2>
+          <p>Every department is equipped with genuine physical apparatus, tactile physics, authentic scientific nomenclature, and automated student grading.</p>
+        </div>
+
+        <div class="modules-grid">
+          <!-- Card 1: Chemistry -->
+          <div class="module-card">
+            <div class="module-thumb">
+              <img src="/assets/landing/hero-chemistry-vr.png" alt="Chemistry Laboratory" />
+              <span class="module-badge">CHEMISTRY · ROOM 304</span>
+            </div>
+            <div class="module-body">
+              <div>
+                <h3>Volumetric Chemistry & Gas Synthesis</h3>
+                <p>Authentic ACS/GHS labeled reagents, Subtractive Beer-Lambert color transmission, H₂ squeaky pop test, and catalytic O₂ splint combustion.</p>
+                <ul class="module-features">
+                  <li>9 Authentic GHS Stock Bottles & Indicators</li>
+                  <li>Real-time pH Meter & Subtractive Optical Color Mixing</li>
+                  <li>Interactive Splint Combustion & Spirit Lamp Physics</li>
+                </ul>
+              </div>
+              <button class="module-action-btn" id="launchChem">Enter Chemistry Lab ➔</button>
+            </div>
+          </div>
+
+          <!-- Card 2: Anatomy -->
+          <div class="module-card">
+            <div class="module-thumb">
+              <img src="/assets/landing/hero-anatomy-vr.png" alt="Human Anatomy Hologram" />
+              <span class="module-badge">BIOLOGY · ROOM 204</span>
+            </div>
+            <div class="module-body">
+              <div>
+                <h3>3D Musculoskeletal Anatomy Hologram</h3>
+                <p>Segmented human body hologram featuring 30 distinct organ structures, bones, muscle groups, and live spatial callout pins.</p>
+                <ul class="module-features">
+                  <li>30 Segmented Anatomical Organs, Muscles & Bones</li>
+                  <li>Live Callout Pins: Femur, Deltoid, Biceps Brachii, Pectoralis</li>
+                  <li>Teacher Teaching Console & Classroom Screen Sync</li>
+                </ul>
+              </div>
+              <button class="module-action-btn" id="launchBio">Enter Anatomy Lab ➔</button>
+            </div>
+          </div>
+
+          <!-- Card 3: Physiology -->
+          <div class="module-card">
+            <div class="module-thumb">
+              <img src="/assets/landing/hero-physiology-vr.png" alt="Medical Physiology Workbench" />
+              <span class="module-badge">MEDICAL WORKBENCH · PHYSIOLOGY</span>
+            </div>
+            <div class="module-body">
+              <div>
+                <h3>Cardiovascular Electrophysiology</h3>
+                <p>Real-time 4-phase Wiggers cardiac cycles, acoustic stethoscope heart sound telemetry, and autonomic pharmacology (Adrenaline & ACh).</p>
+                <ul class="module-features">
+                  <li>Dynamic Wiggers Diagram & 4-Phase ECG Tracing</li>
+                  <li>Pharmacological Injections: Adrenaline & Acetylcholine</li>
+                  <li>Acoustic Stethoscope Soundwaves & S1/S2 Valve Telemetry</li>
+                </ul>
+              </div>
+              <button class="module-action-btn" id="launchPhysio">Enter Medical Deck ➔</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform Key Advantages -->
+        <div class="features-row">
+          <div class="feature-box">
+            <div class="icon">🏛️</div>
+            <h4>Open Campus Grounds</h4>
+            <p>Freely explore outdoors across the school avenue between Chemistry, Biology, Physics, and the Store.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">🛡️</div>
+            <h4>Absolute Safety</h4>
+            <p>Zero risk of chemical burns, glass shattering, or toxic fuming. Unlimited virtual consumable supplies.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">📊</div>
+            <h4>Institutional Analytics</h4>
+            <p>Integrated with school LMS, teacher grading consoles, student telemetry, and practical reports.</p>
+          </div>
+          <div class="feature-box">
+            <div class="icon">🌐</div>
+            <h4>1-Click WebXR Standard</h4>
+            <p>Runs directly inside the browser on Meta Quest 2/3, Vision Pro, Pico, laptops, and mobile screens.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Landing Footer -->
+      <footer class="landing-footer">
+        <div>
+          <strong>HoloLab XR</strong> · King's College Lagos · Official STEM VR Platform · Certified Lab #CSS-042
+        </div>
+        <div>
+          WebXR Standard Compliant · Three.js Engine · Photorealistic Physics & Chemistry
+        </div>
+      </footer>
     </div>
     <header>
       <div class="brand chip">
-        <div class="logo" aria-hidden="true">⚗️</div>
+        <div class="logo" aria-hidden="true"><img src="/assets/hololab-logo.svg" alt="HoloLab XR Logo" /></div>
         <div>
           <h1 data-t="app.title">HoloLab XR</h1>
           <p data-t="app.tagline"></p>
         </div>
         <div id="studentPill">🏫 King's College Lagos · Chidi Okafor · Lab #CSS-042</div>
       </div>
-      <div class="actions chip">
-        <select id="dept" aria-label="Department"></select>
-        <select id="topic" aria-label="Topic"></select>
-        <button id="btnSupermarket">🛒 Supermarket</button>
-        <button id="btnReport">📋 Report</button>
-        <button id="view360" data-t="ui.view360"></button>
-        <button id="reset" data-t="ui.reset"></button>
-        <button id="lang" data-t="ui.lang"></button>
-        <button id="rec"></button>
-        <button id="vr" class="primary" data-t="ui.enterVR"></button>
+      <div class="header-right-column">
+        <div class="actions chip">
+          <a href="schools.html" id="btnSchools" style="text-decoration: none; background: linear-gradient(135deg, #4285f4, #9b72cb); color: #ffffff; font-weight: 700; border-radius: 10px; padding: 9px 14px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px;" title="View Registered Schools">✦ Schools</a>
+          <button id="btnHome" style="background: #0284c7; color: #ffffff; font-weight: 700;">🏠 Welcome</button>
+          <select id="dept" aria-label="Department"></select>
+          <select id="topic" aria-label="Topic"></select>
+          <button id="btnSupermarket">🛒 Supermarket</button>
+          <button id="btnReport">📋 Report</button>
+          <button id="btnBodyParts" style="display: none; background: #0284c7; color: #ffffff; font-weight: 700;">🧬 Body Parts</button>
+          <button id="btnHandTracking" title="Webcam Hand Interaction">🖐️ Hand Tracking</button>
+          <button id="view360" data-t="ui.view360"></button>
+          <button id="reset" data-t="ui.reset"></button>
+          <button id="rec"></button>
+          <button id="vr" class="primary" data-t="ui.enterVR"></button>
+        </div>
+        <details id="tasks" class="chip" open>
+          <summary><span id="taskTitle"></span><span id="taskCount"></span></summary>
+          <ol id="taskList"></ol>
+          <p id="taskInfo"></p>
+        </details>
       </div>
     </header>
-    <details id="tasks" class="chip" open>
-      <summary><span id="taskTitle"></span><span id="taskCount"></span></summary>
-      <ol id="taskList"></ol>
-      <p id="taskInfo"></p>
-    </details>
     <div id="hold" class="chip" hidden>
       <span id="holdName"></span>
       <button id="up" class="icon" aria-label="Raise">▲</button>
@@ -179,58 +897,85 @@
       <div id="hint" class="chip"></div>
       <div id="tally" class="chip"><span id="used"></span> · <b data-t="ui.supply"></b></div>
     </footer>
-    <div id="supermarketModal" class="modal-backdrop" hidden>
-      <div class="modal-card chip">
-        <div class="modal-header">
-          <h2>🛒 HoloLab Supermarket (Virtual Equipment & Materials)</h2>
-          <button class="modal-close" id="closeSupermarket">&times;</button>
-        </div>
-        <div class="modal-tabs">
-          <button id="tabCatalog" class="active">Product Catalogue</button>
-          <button id="tabInventory">My Inventory</button>
-        </div>
-        <div id="catalogContent" class="modal-body">
-          <div id="productList" class="product-grid"></div>
-        </div>
-        <div id="inventoryContent" class="modal-body" hidden>
-          <div id="inventoryList" class="inventory-grid"></div>
-        </div>
-      </div>
-    </div>
-
     <div id="reportModal" class="modal-backdrop" hidden>
-      <div class="modal-card chip">
+      <div class="modal-card chip" style="max-width: 760px; width: 90%;">
         <div class="modal-header">
-          <h2>📋 Scientific Practical Report</h2>
-          <button class="modal-close" id="closeReport">&times;</button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="/assets/hololab-logo.svg" alt="HoloLab Logo" style="width: 32px; height: 32px;" />
+            <div>
+              <h2 style="margin: 0; font-size: 18px;">📋 Certified Scientific Practical Report</h2>
+              <span style="font-size: 11px; color: #38bdf8; font-weight: 700;">WAEC · NECO · CAMBRIDGE ACCREDITED AUDIT TRAIL</span>
+            </div>
+          </div>
+          <button class="modal-close" id="closeReport" aria-label="Close Report">&times;</button>
         </div>
         <div class="modal-body">
           <div class="report-meta">
-            <div><strong>Student:</strong> Chidi Okafor (CSS-2026-042)</div>
+            <div><strong>Candidate:</strong> <span id="reportStudentName">Chidi Okafor</span> (CSS-2026-042)</div>
             <div><strong>Institution:</strong> King's College Lagos</div>
-            <div><strong>Practical:</strong> <span id="reportTopicName">Acid-Base Indicators</span></div>
-            <div><strong>Department:</strong> <span id="reportDeptName">Chemistry (CHEM-304)</span></div>
+            <div><strong>Practical Topic:</strong> <span id="reportTopicName">Acid-Base Indicators</span></div>
+            <div><strong>Department:</strong> <span id="reportDeptName">Chemistry Lab (Room 304)</span></div>
+            <div><strong>Session ID:</strong> <span id="reportSessionId" style="font-family: monospace; color: #38bdf8;">HLB-2026-042</span></div>
+            <div><strong>Evaluation:</strong> <span id="reportGrade" style="font-weight: 700; color: #34d399;">Distinction (A1)</span></div>
           </div>
+
           <div class="report-section">
-            <h3>🔬 Practical Observations & Real-time Telemetry</h3>
+            <h3>
+              <span>🔬 Real-Time Observation Telemetry Stream</span>
+              <span id="reportObsCount" style="font-size: 12px; font-weight: 500; color: #94a3b8;">5 verified entries</span>
+            </h3>
             <div id="reportTelemetry" class="telemetry-box">
-              [Telemetry Stream] Reaction vessel equilibrium monitored.<br />
-              • Reaction Type: Neutralisation & Gas Evolution<br />
-              • pH Equivalence Observed: 7.02 ± 0.05 pH<br />
-              • Transition Indicator: Phenolphthalein end-point reached.<br />
-              • Reaction Vessel Temperature: 21.8 °C (Exothermic ΔT = +0.4 K)
+              <table class="telemetry-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Parameter</th>
+                    <th>Observed Telemetry & Details</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="reportTelemetryBody">
+                  <!-- Populated dynamically by TelemetryRecorder -->
+                </tbody>
+              </table>
             </div>
           </div>
+
           <div class="report-section">
-            <h3>🧪 Verified Reagents & Equipment Utilized</h3>
-            <div id="reportUsage" class="telemetry-box">
-              • Hydrochloric Acid (0.1 M HCl): 50 mL verified consumption.<br />
-              • Sodium Hydroxide (0.1 M NaOH): 50 mL verified consumption.<br />
-              • Borosilicate Glassware: Pyrex 250 mL Beaker (Clean & intact).
+            <h3>🧪 Verified Reagents & Apparatus Utilization</h3>
+            <div id="reportUsage" class="telemetry-box" style="font-family: system-ui, sans-serif; font-size: 13px;">
+              <!-- Populated dynamically -->
             </div>
           </div>
+
+          <!-- Cryptographic Digital Signature & QR Verification Seal -->
+          <div class="report-signature-card">
+            <div class="signature-details">
+              <h4>🔐 CRYPTOGRAPHIC DIGITAL SIGNATURE & ACCREDITATION</h4>
+              <p style="margin: 0 0 6px; font-size: 12px; color: #94a3b8;">
+                Tamper-proof HMAC-SHA256 telemetry hash verified by HoloLab Examination Authority.
+              </p>
+              <div id="reportSigHash" class="signature-hash">SHA256:7E9B-A104-E29B-C84F-9821</div>
+              <div class="examiner-stamp">
+                <span>✓</span> VERIFIED & DIGITALLY SIGNED · DR. EMEKA OKAFOR
+              </div>
+            </div>
+            <div class="report-qr-wrap">
+              <canvas id="reportQrCanvas"></canvas>
+              <span>Scan to Verify</span>
+            </div>
+          </div>
+
           <div class="modal-footer">
-            <button id="btnSubmitReport" class="primary">Submit Practical to Teacher for Grading</button>
+            <div style="font-size: 11px; color: #64748b;">
+              Official King's College Lagos Science Practical Record
+            </div>
+            <div class="modal-footer-actions">
+              <button id="btnPrintReport">🖨️ Print</button>
+              <button id="btnDownloadPdf" class="primary" style="background: #0284c7; border-color: #38bdf8;">📥 Download Signed PDF</button>
+              <button id="btnSubmitReport" class="primary">✅ Submit for Grading</button>
+            </div>
           </div>
         </div>
       </div>
@@ -239,3 +984,4 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
+

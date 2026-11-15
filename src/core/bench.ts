@@ -17,23 +17,115 @@ export interface BenchMaterials {
   handleMat: THREE.Material;
 }
 
-/** A printed label for the decorative bottles on the shelf. */
-function shelfLabel(formula: string, band: string) {
-  return canvasTexture(256, 192, (c, w, h) => {
-    c.fillStyle = '#f6f2e6';
+export interface ShelfChemical {
+  formula: string;
+  fullName: string;
+  spec: string;
+  cas: string;
+  band: string;
+  liquid: number | null;
+  amber: boolean;
+  h: number;
+  hazard?: 'corrosive' | 'oxidiser' | 'flammable' | 'toxic';
+}
+
+/** A high-fidelity printed chemical stock bottle label for the shelf. */
+function shelfLabel(chem: ShelfChemical) {
+  return canvasTexture(384, 256, (c, w, h) => {
+    // Label paper
+    c.fillStyle = '#faf7ee';
     c.fillRect(0, 0, w, h);
-    c.fillStyle = band;
-    c.fillRect(0, 0, w, h * 0.24);
-    c.fillStyle = '#16212c';
+    c.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    c.lineWidth = 4;
+    c.strokeRect(3, 3, w - 6, h - 6);
+
+    // Top classification color band
+    const bandH = h * 0.26;
+    c.fillStyle = chem.band;
+    c.fillRect(0, 0, w, bandH);
+
+    // Full Chemical Name in white
+    c.fillStyle = '#ffffff';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    let size = 76;
-    c.font = `800 ${size}px "Segoe UI", sans-serif`;
-    while (c.measureText(formula).width > w * 0.9 && size > 20) {
-      size -= 4;
-      c.font = `800 ${size}px "Segoe UI", sans-serif`;
+    let titleSize = bandH * 0.46;
+    c.font = `800 ${titleSize}px "Segoe UI", sans-serif`;
+    while (c.measureText(chem.fullName).width > w * 0.92 && titleSize > 10) {
+      titleSize -= 1;
+      c.font = `800 ${titleSize}px "Segoe UI", sans-serif`;
     }
-    c.fillText(formula, w / 2, h * 0.62);
+    c.fillText(chem.fullName, w / 2, bandH * 0.52);
+
+    // Sub-header grade bar
+    const subH = h * 0.085;
+    c.fillStyle = '#ece8dc';
+    c.fillRect(0, bandH, w, subH);
+    c.fillStyle = '#475569';
+    c.font = `700 ${subH * 0.6}px "Segoe UI", sans-serif`;
+    c.fillText('ACS ANALYTICAL GRADE', w / 2, bandH + subH * 0.52);
+
+    const hasHazard = !!chem.hazard;
+    const textW = hasHazard ? w * 0.64 : w * 0.9;
+    const cx = hasHazard ? w * 0.36 : w / 2;
+
+    // Prominent Formula
+    c.fillStyle = '#0f172a';
+    let fSize = h * 0.28;
+    c.font = `900 ${fSize}px "Segoe UI", sans-serif`;
+    while (c.measureText(chem.formula).width > textW && fSize > 14) {
+      fSize -= 2;
+      c.font = `900 ${fSize}px "Segoe UI", sans-serif`;
+    }
+    c.fillText(chem.formula, cx, bandH + subH + h * 0.17);
+
+    // Specification / concentration
+    c.fillStyle = '#1e293b';
+    c.font = `700 ${h * 0.1}px "Segoe UI", sans-serif`;
+    c.fillText(chem.spec, cx, bandH + subH + h * 0.34);
+
+    // CAS Number
+    c.fillStyle = '#64748b';
+    c.font = `600 ${h * 0.08}px "Segoe UI", sans-serif`;
+    c.fillText(`CAS: ${chem.cas}`, cx, bandH + subH + h * 0.46);
+
+    // GHS Hazard Diamond
+    if (chem.hazard) {
+      const s = h * 0.28;
+      const hx = w * 0.82;
+      const hy = bandH + subH + h * 0.26;
+      c.save();
+      c.translate(hx, hy);
+      c.rotate(Math.PI / 4);
+      c.fillStyle = '#ffffff';
+      c.fillRect(-s / 2, -s / 2, s, s);
+      c.strokeStyle = '#dc2626';
+      c.lineWidth = Math.max(3, s * 0.12);
+      c.strokeRect(-s / 2, -s / 2, s, s);
+      c.restore();
+
+      c.fillStyle = '#111827';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      if (chem.hazard === 'corrosive') {
+        c.font = `900 ${s * 0.65}px "Segoe UI", sans-serif`;
+        c.fillText('⚗', hx, hy);
+      } else if (chem.hazard === 'oxidiser') {
+        c.font = `900 ${s * 0.65}px "Segoe UI", sans-serif`;
+        c.fillText('◯', hx, hy);
+      } else if (chem.hazard === 'flammable') {
+        c.font = `900 ${s * 0.65}px "Segoe UI", sans-serif`;
+        c.fillText('🔥', hx, hy);
+      } else {
+        c.font = `900 ${s * 0.7}px "Segoe UI", sans-serif`;
+        c.fillText('!', hx, hy);
+      }
+    }
+
+    // Footer
+    c.fillStyle = '#94a3b8';
+    c.font = `700 ${h * 0.065}px "Segoe UI", sans-serif`;
+    c.textAlign = 'center';
+    c.fillText('REAGENT CHEMICAL · LABORATORY USE ONLY', w / 2, h * 0.94);
   });
 }
 
@@ -105,32 +197,32 @@ export function buildBench(m: BenchMaterials) {
   const amber = new THREE.MeshStandardMaterial({ color: 0x6b3510, roughness: 0.12, transparent: true, opacity: 0.82, envMapIntensity: 1.6 });
   const capMat = std(0x1d1f22, 0.5);
   const crystals = std(0xf2f2ee, 0.9);
-  // [formula, label colour, solution colour (null: white crystals or opaque amber), amber glass, height]
-  const shelfBottles: [string, string, number | null, boolean, number][] = [
-    ['CuSO₄', '#1f5fae', 0x2f7fd0, false, 0.12],
-    ['NaCl', '#2e7d4f', null, false, 0.1],
-    ['KMnO₄', '#7b2fa0', 0x6a1b8a, false, 0.12],
-    ['H₂SO₄', '#c62828', null, true, 0.13],
-    ['C₂H₅OH', '#e0a100', null, false, 0.11],
-    ['FeCl₃', '#a35214', 0xb5651d, false, 0.1],
-    ['AgNO₃', '#5f6b75', null, true, 0.12],
-    ['Na₂CO₃', '#2e7d4f', null, false, 0.1],
-    ['HNO₃', '#c62828', null, true, 0.13],
+  // 9 authentic laboratory chemical stock bottles on the rear reagent shelf
+  const shelfBottles: ShelfChemical[] = [
+    { formula: 'CuSO₄ · 5H₂O', fullName: 'COPPER(II) SULFATE', spec: 'ACS Reagent ≥ 99.0%', cas: '7758-99-8', band: '#1d4ed8', liquid: 0x1d4ed8, amber: false, h: 0.12 },
+    { formula: 'NaCl', fullName: 'SODIUM CHLORIDE', spec: 'AR Grade ≥ 99.5%', cas: '7647-14-5', band: '#15803d', liquid: null, amber: false, h: 0.1 },
+    { formula: 'KMnO₄', fullName: 'POTASSIUM PERMANGANATE', spec: 'ACS Reagent ≥ 99.0%', cas: '7722-64-7', band: '#7e22ce', liquid: 0x4a044e, amber: false, h: 0.12, hazard: 'oxidiser' },
+    { formula: 'H₂SO₄', fullName: 'SULFURIC ACID 98%', spec: 'Conc. 98.0% · M: 98.08', cas: '7664-93-9', band: '#b91c1c', liquid: null, amber: true, h: 0.13, hazard: 'corrosive' },
+    { formula: 'C₂H₅OH', fullName: 'ETHANOL ABSOLUTE', spec: 'Alcohol 96% vol.', cas: '64-17-5', band: '#ea580c', liquid: null, amber: false, h: 0.11, hazard: 'flammable' },
+    { formula: 'FeCl₃', fullName: 'IRON(III) CHLORIDE', spec: 'ACS Reagent · 1.0 M', cas: '7705-08-0', band: '#b45309', liquid: 0x9a3412, amber: false, h: 0.1, hazard: 'corrosive' },
+    { formula: 'AgNO₃', fullName: 'SILVER NITRATE', spec: 'Volumetric 0.10 M', cas: '7761-88-8', band: '#475569', liquid: null, amber: true, h: 0.12, hazard: 'corrosive' },
+    { formula: 'Na₂CO₃', fullName: 'SODIUM CARBONATE', spec: 'Anhydrous Pure ≥ 99.5%', cas: '497-19-8', band: '#15803d', liquid: null, amber: false, h: 0.1 },
+    { formula: 'HNO₃', fullName: 'NITRIC ACID 68%', spec: 'Conc. 68.0% · M: 63.01', cas: '7697-37-2', band: '#b91c1c', liquid: null, amber: true, h: 0.13, hazard: 'oxidiser' },
   ];
-  shelfBottles.forEach(([formula, band, liquid, brown, h], i) => {
+  shelfBottles.forEach((chem, i) => {
     const x = shelfL + 0.08 + i * 0.152;
     const y = shelfY + 0.009;
-    add(cyl(0.026, 0.026, h, 20), brown ? amber : glass, x, y + h / 2, shelfZ, 0, 0, true);
-    add(cyl(0.011, 0.02, 0.018, 16), brown ? amber : glass, x, y + h + 0.009, shelfZ);
-    add(cyl(0.013, 0.013, 0.02, 16), capMat, x, y + h + 0.026, shelfZ);
-    if (liquid !== null) add(cyl(0.024, 0.024, h * 0.7, 18), new THREE.MeshStandardMaterial({ color: liquid, roughness: 0.1, transparent: true, opacity: 0.85 }), x, y + h * 0.35 + 0.002, shelfZ);
-    else if (!brown) add(cyl(0.024, 0.024, h * 0.55, 18), crystals, x, y + h * 0.275 + 0.002, shelfZ);
-    const map = shelfLabel(formula, band);
+    add(cyl(0.026, 0.026, chem.h, 20), chem.amber ? amber : glass, x, y + chem.h / 2, shelfZ, 0, 0, true);
+    add(cyl(0.011, 0.02, 0.018, 16), chem.amber ? amber : glass, x, y + chem.h + 0.009, shelfZ);
+    add(cyl(0.013, 0.013, 0.02, 16), capMat, x, y + chem.h + 0.026, shelfZ);
+    if (chem.liquid !== null) add(cyl(0.024, 0.024, chem.h * 0.7, 18), new THREE.MeshStandardMaterial({ color: chem.liquid, roughness: 0.1, transparent: true, opacity: 0.88 }), x, y + chem.h * 0.35 + 0.002, shelfZ);
+    else if (!chem.amber) add(cyl(0.024, 0.024, chem.h * 0.55, 18), crystals, x, y + chem.h * 0.275 + 0.002, shelfZ);
+    const map = shelfLabel(chem);
     const label = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0265, 0.0265, h * 0.42, 16, 1, true, -0.9, 1.8),
+      new THREE.CylinderGeometry(0.0265, 0.0265, chem.h * 0.44, 16, 1, true, -0.9, 1.8),
       new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: 0xffffff, emissiveIntensity: 0.15, roughness: 0.8 }),
     );
-    label.position.set(x, y + h * 0.48, shelfZ);
+    label.position.set(x, y + chem.h * 0.48, shelfZ);
     g.add(label);
   });
 

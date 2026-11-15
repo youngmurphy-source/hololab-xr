@@ -25,9 +25,12 @@ export const hydrogen: TopicDef = {
   ],
   build(lab, api) {
     // 10% hydrochloric acid is about 2.9 M; amounts are per 100 mL.
-    reagentBottle(lab, { key: 'item.hclDilute', formula: 'HCl', detail: '10%', band: BAND.acid, hazard: 'corrosive' }, { volume: 100, amounts: { acid: 0.29 } }, -0.42, -0.76);
-    jar(lab, { key: 'item.zinc', formula: 'Zn', detail: '≥ 99%', band: BAND.metal }, { volume: 0, amounts: { zn: ZN_PER_PIECE } }, 0x9aa3ab, 0.0035, -0.28, -0.76, 'pieces');
+    reagentBottle(lab, { key: 'item.hclDilute', formula: 'HCl', detail: '10% w/w', band: BAND.acid, hazard: 'corrosive', cas: '7647-01-0', mw: '36.46 g/mol' }, { volume: 100, amounts: { acid: 0.29 } }, -0.42, -0.76);
+    jar(lab, { key: 'item.zinc', formula: 'Zn', detail: 'Granular ≥ 99%', band: BAND.metal, cas: '7440-66-6', mw: '65.38 g/mol' }, { volume: 0, amounts: { zn: ZN_PER_PIECE } }, 0x94a3b8, 0.0035, -0.28, -0.76, 'pieces');
     const { tubes, slotX } = rackWithTubes(lab, -0.02, -0.52, 3, 2);
+    for (const v of tubes) {
+      v.tint = () => ({ color: 0xf0f9ff, opacity: 0.22, transmission: 0.96 });
+    }
     const collector = collectorTube(lab, slotX(2), -0.55);
     const flame = spiritLamp(lab, 0.3, -0.58);
     sink(lab);
@@ -77,7 +80,7 @@ export const hydrogen: TopicDef = {
           const dx = mouth.x - tubeMouth.x;
           const dz = mouth.z - tubeMouth.z;
           const dy = mouth.y - tubeMouth.y;
-          if (dx * dx + dz * dz < 0.025 * 0.025 && dy > -0.04 && dy < 0.05) {
+          if (dx * dx + dz * dz < 0.038 * 0.038 && dy > -0.05 && dy < 0.06) {
             gas = Math.min(TUBE_ML, gas + rate * dt * 0.9);
             peak = Math.max(peak, gas);
           }

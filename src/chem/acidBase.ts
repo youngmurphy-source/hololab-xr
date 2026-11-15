@@ -51,7 +51,8 @@ export function indicatorColor(ind: Indicator, pH: number): { color: number; alp
   return { color: last[1], alpha: last[2] };
 }
 
-const WATER = 0xb9d8e6;
+// Real-life pure water is crystal clear and transparent, catching subtle ambient highlights.
+const WATER = 0xf0f9ff;
 
 /** How strongly each indicator shows: a few drops in 100 mL is clearly coloured. */
 export function indicatorStrength(m: Mixture, ind: Indicator) {
@@ -60,20 +61,108 @@ export function indicatorStrength(m: Mixture, ind: Indicator) {
   return 1 - Math.exp(-perMl * 45);
 }
 
+/**
+ * Subtractive optical color transmission based on the Beer-Lambert Law:
+ * Absorbance A = -log(T).
+ * When solutions of different colors mix, their spectral absorbance values add:
+ * A_total = sum(c_i * A_i).
+ * Transmitted light T = exp(-A_total).
+ * This produces natural subtractive color transmission (e.g. Yellow + Blue -> Green).
+ */
+export function mixColorTransmission(colors: { color: number; strength: number }[]): Tint {
+  if (colors.length === 0) {
+    return { color: WATER, transmission: 0.96, opacity: 0.22 };
+  }
+
+  const toLinear = (val: number) => Math.pow(val / 255, 2.2);
+  const toSRGB = (val: number) => Math.round(Math.pow(Math.min(1, Math.max(0, val)), 1 / 2.2) * 255);
+
+  let totalA_R = 0;
+  let totalA_G = 0;
+  let totalA_B = 0;
+  let maxStrength = 0;
+  let totalWeight = 0;
+
+  for (const { color, strength } of colors) {
+    if (strength <= 0) continue;
+    maxStrength = Math.max(maxStrength, strength);
+    totalWeight += strength;
+
+    const r = Math.max(0.005, toLinear((color >> 16) & 255));
+    const g = Math.max(0.005, toLinear((color >> 8) & 255));
+    const b = Math.max(0.005, toLinear(color & 255));
+
+    // Optical density / absorbance: A = -log(T)
+    totalA_R += -Math.log(r) * strength;
+    totalA_G += -Math.log(g) * strength;
+    totalA_B += -Math.log(b) * strength;
+  }
+
+  if (totalWeight <= 0) {
+    return { color: WATER, transmission: 0.96, opacity: 0.22 };
+  }
+
+  // Scale absorbance by mixture concentration
+  const scale = Math.min(2.0, Math.pow(maxStrength, 0.75)) / totalWeight;
+  const tR = Math.exp(-totalA_R * scale);
+  const tG = Math.exp(-totalA_G * scale);
+  const tB = Math.exp(-totalA_B * scale);
+
+  // Dilute with solvent (water) according to strength
+  const waterR = toLinear((WATER >> 16) & 255);
+  const waterG = toLinear((WATER >> 8) & 255);
+  const waterB = toLinear(WATER & 255);
+
+  const k = Math.min(1.0, maxStrength);
+  const blendedR = toSRGB(waterR * (1 - k) + tR * k);
+  const blendedG = toSRGB(waterG * (1 - k) + tG * k);
+  const blendedB = toSRGB(waterB * (1 - k) + tB * k);
+
+  const finalColor = (blendedR << 16) | (blendedG << 8) | blendedB;
+  const transmission = Math.max(0.18, 0.96 - 0.72 * maxStrength);
+  const opacity = 0.22 + 0.68 * maxStrength;
+
+  return { color: finalColor, transmission, opacity };
+}
+
 export function solutionTint(m: Mixture): Tint {
   const pH = pHOf(m);
-  if (pH === null) return { color: WATER, opacity: 0.22 };
-  // Average the visible indicator colours, then show them as strongly as the strongest one.
-  let avg = WATER;
-  let weight = 0;
-  let strongest = 0;
+  if (pH === null) return { color: WATER, opacity: 0.22, transmission: 0.96 };
+
+  const components: { color: number; strength: number }[] = [];
+
   for (const ind of INDICATORS) {
     const { color: c, alpha } = indicatorColor(ind, pH);
-    const w = indicatorStrength(m, ind) * alpha;
-    if (w < 0.01) continue;
-    weight += w;
-    avg = lerpColor(avg, c, w / weight);
-    strongest = Math.max(strongest, w);
+    const s = indicatorStrength(m, ind) * alpha;
+    if (s > 0.005) {
+      components.push({ color: c, strength: s });
+    }
   }
-  return { color: lerpColor(WATER, avg, strongest), opacity: 0.22 + 0.68 * strongest };
+
+  // Also support any custom colored chemical components in the mixture
+  for (const [key, val] of Object.entries(m.amounts)) {
+    if (key.startsWith('color:') && val > 0 && m.volume > 0.5) {
+      const hex = parseInt(key.slice(6), 16);
+      if (!isNaN(hex)) {
+        const s = 1 - Math.exp(-(val / m.volume) * 45);
+        components.push({ color: hex, strength: s });
+      }
+    }
+  }
+
+  if (components.length === 0) {
+    return { color: WATER, opacity: 0.22, transmission: 0.96 };
+  }
+
+  // For a single indicator/color, preserve the direct calibrated tint
+  if (components.length === 1) {
+    const { color: c, strength } = components[0];
+    const finalColor = lerpColor(WATER, c, strength);
+    const opacity = 0.22 + 0.68 * strength;
+    const transmission = Math.max(0.2, 0.96 - 0.72 * strength);
+    return { color: finalColor, opacity, transmission };
+  }
+
+  // When mixing multiple chemicals of different colors, calculate Beer-Lambert transmission
+  return mixColorTransmission(components);
 }

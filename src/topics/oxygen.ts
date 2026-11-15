@@ -27,16 +27,20 @@ export const oxygen: TopicDef = {
   ],
   build(lab, api) {
     // 3% hydrogen peroxide is 0.88 M; amounts are per 100 mL.
-    reagentBottle(lab, { key: 'item.h2o2', formula: 'H₂O₂', detail: '3%', band: BAND.oxidiser, hazard: 'oxidiser', amber: true }, { volume: 100, amounts: { h2o2: 0.088 } }, -0.42, -0.76);
-    jar(lab, { key: 'item.mno2', formula: 'MnO₂', detail: '≥ 99%', band: BAND.metal, hazard: 'irritant' }, { volume: 0, amounts: { mno2: 1 } }, 0x1f1c1a, 0.0022, -0.28, -0.76, 'spoons');
+    reagentBottle(lab, { key: 'item.h2o2', formula: 'H₂O₂', detail: '3.0% aq.', band: BAND.oxidiser, hazard: 'oxidiser', amber: true, cas: '7722-84-1', mw: '34.01 g/mol' }, { volume: 100, amounts: { h2o2: 0.088 } }, -0.42, -0.76);
+    jar(lab, { key: 'item.mno2', formula: 'MnO₂', detail: 'Powder ≥ 99%', band: BAND.metal, hazard: 'irritant', cas: '1313-13-9', mw: '86.94 g/mol' }, { volume: 0, amounts: { mno2: 1 } }, 0x18181b, 0.0022, -0.28, -0.76, 'spoons');
     const { tubes } = rackWithTubes(lab, -0.04, -0.52, 2, 2);
     const flame = spiritLamp(lab, 0.3, -0.58);
     const s = splint(lab, 0.08, -0.34);
     sink(lab);
 
-    // Peroxide turns slightly grey-black once MnO₂ powder is stirred through it.
+    // Real-life optics: pure H2O2 is crystal-clear transparent liquid.
+    // Adding black MnO2 powder forms a dark, boiling charcoal-black catalytic suspension.
     for (const v of tubes) {
-      v.tint = (m) => (amount(m, 'mno2') > 0 ? { color: 0x8a8d8f, opacity: 0.55 } : { color: 0xdfeef8, opacity: 0.38 });
+      v.tint = (m) =>
+        amount(m, 'mno2') > 0
+          ? { color: 0x18181b, opacity: 0.88, transmission: 0.15 }
+          : { color: 0xf0f9ff, opacity: 0.22, transmission: 0.96 };
     }
 
     const o2 = new Map<(typeof tubes)[number], number>(); // oxygen share of the air in each tube, 0..1

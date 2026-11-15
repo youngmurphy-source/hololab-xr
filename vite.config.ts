@@ -5,6 +5,18 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 // browser only allows WebXR on secure pages (localhost is the one exception).
 export default defineConfig(({ mode }) => ({
   base: './',
+  server: {
+    port: 5174,
+  },
   plugins: mode === 'vr' ? [basicSsl()] : [],
-  build: { target: 'es2022', chunkSizeWarningLimit: 1200 },
+  build: {
+    target: 'es2022',
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        schools: 'schools.html',
+      },
+    },
+  },
 }));

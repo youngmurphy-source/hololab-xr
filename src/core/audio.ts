@@ -131,6 +131,49 @@ class LabAudio {
     this.burst(0.6, 0.35, 'bandpass', 300, 1800);
   }
 
+  ping() {
+    this.tone(1760, 1760, 0.18, 0.08, 'sine');
+  }
+
+  fizz() {
+    this.burst(0.45, 0.22, 'highpass', 3000, 4500);
+  }
+
+  chalkWrite() {
+    this.unlock();
+    if (!this.ctx || !this.noise) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2600 + Math.random() * 1200;
+    filter.Q.value = 3.5;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.045, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    src.connect(filter).connect(gain).connect(this.master!);
+    src.start(now);
+    src.stop(now + 0.05);
+  }
+
+  chalkErase() {
+    this.unlock();
+    if (!this.ctx || !this.noise) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 850;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    src.connect(filter).connect(gain).connect(this.master!);
+    src.start(now);
+    src.stop(now + 0.08);
+  }
+
   /** Synthesizes authentic S1 ("lub") and S2 ("dub") heart sounds. */
   heartbeat(vol = 0.28, pitchFactor = 1.0) {
     const ctx = this.ctx;

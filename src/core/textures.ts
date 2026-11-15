@@ -1059,3 +1059,950 @@ export const blobShadowTexture = () =>
     c.fillStyle = g;
     c.fillRect(0, 0, w, w);
   });
+
+
+/** Eukaryotic Cell Structure & Organelle Cytology Wall Poster */
+export const bioPosterCellTexture = () =>
+  canvasTexture(1024, 768, (c, w, h) => {
+    c.fillStyle = '#f8fafc';
+    c.fillRect(0, 0, w, h);
+    c.fillStyle = '#065f46';
+    c.fillRect(0, 0, w, 84);
+    c.fillStyle = '#ffffff';
+    c.font = 'bold 36px "Segoe UI", sans-serif';
+    c.fillText('EUKARYOTIC CELL CYTOLOGY & ORGANELLES', 32, 54);
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillStyle = '#6ee7b7';
+    c.fillText('DEPARTMENT OF BIOLOGICAL SCIENCES & GENETICS · ROOM 201', 32, 76);
+    c.strokeStyle = '#065f46';
+    c.lineWidth = 8;
+    c.strokeRect(4, 4, w - 8, h - 8);
+
+    const cx = w * 0.46;
+    const cy = h * 0.54;
+    c.save();
+    c.beginPath();
+    c.ellipse(cx, cy, 270, 200, 0.15, 0, Math.PI * 2);
+    c.fillStyle = '#ecfdf5';
+    c.fill();
+    c.lineWidth = 14;
+    c.strokeStyle = '#34d399';
+    c.stroke();
+    c.restore();
+
+    const nx = cx - 70;
+    const ny = cy - 20;
+    c.beginPath();
+    c.ellipse(nx, ny, 85, 75, 0, 0, Math.PI * 2);
+    c.fillStyle = '#bfdbfe';
+    c.fill();
+    c.lineWidth = 6;
+    c.strokeStyle = '#2563eb';
+    c.stroke();
+
+    c.beginPath();
+    c.arc(nx - 10, ny - 5, 32, 0, Math.PI * 2);
+    c.fillStyle = '#1e40af';
+    c.fill();
+
+    const drawMito = (mx: number, my: number, rot: number) => {
+      c.save();
+      c.translate(mx, my);
+      c.rotate(rot);
+      c.beginPath();
+      c.ellipse(0, 0, 48, 24, 0, 0, Math.PI * 2);
+      c.fillStyle = '#fde68a';
+      c.fill();
+      c.strokeStyle = '#d97706';
+      c.lineWidth = 4;
+      c.stroke();
+      c.beginPath();
+      for (let x = -30; x <= 30; x += 12) {
+        c.moveTo(x, -14);
+        c.lineTo(x + 4, 14);
+      }
+      c.strokeStyle = '#b45309';
+      c.lineWidth = 2.5;
+      c.stroke();
+      c.restore();
+    };
+
+    drawMito(cx + 140, cy - 80, -0.4);
+    drawMito(cx + 120, cy + 90, 0.6);
+    drawMito(cx - 150, cy + 80, -0.2);
+
+    c.strokeStyle = '#f472b6';
+    c.lineWidth = 5;
+    for (let r = 1; r <= 3; r++) {
+      c.beginPath();
+      c.arc(nx, ny, 90 + r * 16, -0.8, 1.8);
+      c.stroke();
+    }
+
+    c.strokeStyle = '#a855f7';
+    c.lineWidth = 6;
+    for (let g = 0; g < 4; g++) {
+      c.beginPath();
+      c.arc(cx + 130, cy + 10, 40 + g * 12, 2.2, 4.1);
+      c.stroke();
+    }
+
+    const callout = (tx: number, ty: number, label: string, desc: string, lx: number, ly: number) => {
+      c.strokeStyle = '#64748b';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(lx, ly);
+      c.lineTo(tx, ty);
+      c.stroke();
+      c.fillStyle = '#0f172a';
+      c.beginPath();
+      c.arc(lx, ly, 4, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#0f172a';
+      c.font = 'bold 16px "Segoe UI", sans-serif';
+      c.fillText(label, tx, ty - 6);
+      c.fillStyle = '#475569';
+      c.font = '13px "Segoe UI", sans-serif';
+      c.fillText(desc, tx, ty + 10);
+    };
+
+    callout(40, 180, '1. NUCLEUS & NUCLEOLUS', 'Houses chromatin DNA; directs protein synthesis', nx - 40, ny - 20);
+    callout(40, 320, '2. ROUGH ENDOPLASMIC RETICULUM', 'Ribosome-studded membranes for folding', nx - 100, ny + 40);
+    callout(40, 680, '3. MITOCHONDRIA', 'ATP synthesis via oxidative phosphorylation', cx - 140, cy + 80);
+    callout(760, 220, '4. GOLGI APPARATUS', 'Post-translational modification & packaging', cx + 130, cy + 10);
+    callout(760, 420, '5. CELL MEMBRANE', 'Selectively permeable phospholipid bilayer', cx + 240, cy - 60);
+    callout(760, 620, '6. CYTOPLASM & CYTOSOL', 'Fluid medium hosting cellular metabolic pathways', cx + 180, cy + 130);
+  });
+
+/** Physics Lab Wall Poster: Classical Mechanics, Wave Optics & Electromagnetism */
+export const physicsPosterTexture = () =>
+  canvasTexture(1024, 768, (c, w, h) => {
+    c.fillStyle = '#0f172a';
+    c.fillRect(0, 0, w, h);
+    c.fillStyle = '#4338ca';
+    c.fillRect(0, 0, w, 84);
+    c.fillStyle = '#ffffff';
+    c.font = 'bold 36px "Segoe UI", sans-serif';
+    c.fillText('FUNDAMENTAL LAWS OF PHYSICS & OPTICS', 32, 54);
+    c.fillStyle = '#c7d2fe';
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillText('DEPARTMENT OF PHYSICS & APPLIED MECHANICS · ROOM 101', 32, 76);
+
+    c.strokeStyle = '#6366f1';
+    c.lineWidth = 6;
+    c.strokeRect(4, 4, w - 8, h - 8);
+
+    c.fillStyle = '#1e293b';
+    c.fillRect(30, 110, 460, 300);
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 20px "Segoe UI", sans-serif';
+    c.fillText("OPTICS: SNELL'S LAW & PRISM DISPERSION", 45, 145);
+
+    c.save();
+    c.beginPath();
+    c.moveTo(260, 180);
+    c.lineTo(330, 310);
+    c.lineTo(190, 310);
+    c.closePath();
+    c.fillStyle = 'rgba(147, 197, 253, 0.25)';
+    c.fill();
+    c.strokeStyle = '#93c5fd';
+    c.lineWidth = 3;
+    c.stroke();
+
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(80, 260);
+    c.lineTo(218, 250);
+    c.stroke();
+
+    const rainbow = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
+    rainbow.forEach((col, idx) => {
+      const angle = 0.04 * (idx - 2.5);
+      c.strokeStyle = col;
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(218, 250);
+      c.lineTo(270, 240 + idx * 3);
+      c.lineTo(440, 220 + idx * 16 + angle * 20);
+      c.stroke();
+    });
+    c.restore();
+
+    c.fillStyle = '#f8fafc';
+    c.font = 'italic 18px "Courier New", monospace';
+    c.fillText('n₁ · sin(θ₁) = n₂ · sin(θ₂)', 50, 380);
+    c.fillStyle = '#94a3b8';
+    c.font = '14px "Segoe UI", sans-serif';
+    c.fillText('Dispersion index: n(λ) = A + B/λ²', 50, 400);
+
+    c.fillStyle = '#1e293b';
+    c.fillRect(520, 110, 470, 300);
+    c.fillStyle = '#a855f7';
+    c.font = 'bold 20px "Segoe UI", sans-serif';
+    c.fillText('HARMONIC MOTION: SIMPLE PENDULUM', 535, 145);
+
+    c.strokeStyle = '#64748b';
+    c.lineWidth = 4;
+    c.beginPath();
+    c.moveTo(700, 170);
+    c.lineTo(800, 170);
+    c.stroke();
+
+    c.strokeStyle = '#e2e8f0';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(750, 170);
+    c.lineTo(820, 280);
+    c.stroke();
+
+    c.beginPath();
+    c.arc(820, 280, 18, 0, Math.PI * 2);
+    c.fillStyle = '#eab308';
+    c.fill();
+    c.strokeStyle = '#ca8a04';
+    c.lineWidth = 2;
+    c.stroke();
+
+    c.fillStyle = '#f8fafc';
+    c.font = 'italic 18px "Courier New", monospace';
+    c.fillText('T = 2π √(L / g)', 545, 360);
+    c.fillStyle = '#94a3b8';
+    c.font = '14px "Segoe UI", sans-serif';
+    c.fillText('g ≈ 9.80665 m/s² · Restoring torque: τ = -mgL sin θ', 545, 390);
+
+    c.fillStyle = '#1e293b';
+    c.fillRect(30, 430, 960, 310);
+    c.fillStyle = '#34d399';
+    c.font = 'bold 20px "Segoe UI", sans-serif';
+    c.fillText("ELECTROMAGNETIC THEORY & MAXWELL'S UNIFIED EQUATIONS", 45, 465);
+
+    c.fillStyle = '#f8fafc';
+    c.font = '16px "Courier New", monospace';
+    c.fillText('1. Gauss’s Law (Electric):     ∇ · E = ρ / ε₀', 60, 510);
+    c.fillText('2. Gauss’s Law (Magnetic):     ∇ · B = 0', 60, 545);
+    c.fillText('3. Faraday’s Law of Induction: ∇ × E = -∂B / ∂t', 60, 580);
+    c.fillText('4. Ampère–Maxwell Law:         ∇ × B = μ₀(J + ε₀ ∂E / ∂t)', 60, 615);
+
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 17px "Segoe UI", sans-serif';
+    c.fillText('Speed of Light in Vacuum:  c = 1 / √(ε₀ μ₀) = 299,792,458 m/s', 60, 670);
+    c.fillStyle = '#e2e8f0';
+    c.fillText('Ohm’s Law & Joule Heating: V = I · R   |   P = I² · R = V · I', 60, 705);
+  });
+
+/** Physics Lab Chalkboard */
+export const physicsChalkboardTexture = () =>
+  canvasTexture(1024, 512, (c, w, h) => {
+    c.fillStyle = '#163324';
+    c.fillRect(0, 0, w, h);
+
+    const r = rng(42);
+    c.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    for (let i = 0; i < 400; i++) {
+      c.fillRect(r() * w, r() * h, 1 + r() * 5, 1 + r() * 5);
+    }
+
+    c.strokeStyle = '#a38152';
+    c.lineWidth = 14;
+    c.strokeRect(7, 7, w - 14, h - 14);
+
+    c.fillStyle = '#fef08a';
+    c.font = 'bold 28px "Caveat", "Comic Sans MS", cursive, sans-serif';
+    c.fillText('PHYSICS PRACTICAL: LIGHT DISPERSION & OSCILLATION', 40, 50);
+
+    c.fillStyle = '#ffffff';
+    c.font = '22px "Courier New", monospace';
+    c.fillText('• Snell’s Law: n₁ sin(θ₁) = n₂ sin(θ₂)', 40, 100);
+    c.fillText('• Cauchy dispersion: n(λ) = A + B/λ²', 40, 132);
+    c.fillText('• Critical Angle: θc = arcsin(n₂ / n₁)', 40, 164);
+    c.fillText('• Minimum Deviation: δm = 2θ₁ - A (Apex A=60°)', 40, 196);
+    c.fillText('• Crown Glass: A_c = 1.5046, B_c = 4.20×10³ nm²', 40, 228);
+
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 2.5;
+    c.beginPath();
+    c.moveTo(760, 100);
+    c.lineTo(860, 250);
+    c.lineTo(660, 250);
+    c.closePath();
+    c.stroke();
+
+    c.strokeStyle = '#fde047';
+    c.beginPath();
+    c.moveTo(560, 200);
+    c.lineTo(715, 180);
+    c.lineTo(790, 170);
+    c.stroke();
+
+    c.strokeStyle = '#f87171';
+    c.beginPath();
+    c.moveTo(790, 170);
+    c.lineTo(950, 150);
+    c.stroke();
+    c.fillText('Red (λ=700nm)', 850, 140);
+
+    c.strokeStyle = '#c084fc';
+    c.beginPath();
+    c.moveTo(790, 170);
+    c.lineTo(950, 210);
+    c.stroke();
+    c.fillText('Violet (λ=400nm)', 830, 235);
+
+    c.fillStyle = '#fef08a';
+    c.fillText('----------------------------------------------------', 40, 260);
+    c.fillStyle = '#e2e8f0';
+    c.fillText('Pendulum: T = 2π√(L/g)  |  L = 1.0 m  =>  T ≈ 2.006 s', 40, 305);
+    c.fillText('Circuit:   V = I · R     |  Power P = V · I = I²R', 40, 350);
+    c.fillText('Safety:    DO NOT look directly into optical laser aperture!', 40, 410);
+    c.fillStyle = '#86efac';
+    c.fillText('Class Goal: Verify dispersion angle across red, green and violet.', 40, 465);
+  });
+
+/** Campus Directional Signpost Texture */
+export const campusSignpostTexture = () =>
+  canvasTexture(512, 256, (c, w, h) => {
+    c.fillStyle = '#0f172a';
+    c.fillRect(0, 0, w, h);
+    c.strokeStyle = '#38bdf8';
+    c.lineWidth = 6;
+    c.strokeRect(3, 3, w - 6, h - 6);
+
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 22px "Segoe UI", sans-serif';
+    c.fillText('HOLOLAB SCIENCE ACADEMY', 25, 42);
+
+    c.strokeStyle = '#334155';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(20, 56);
+    c.lineTo(w - 20, 56);
+    c.stroke();
+
+    c.fillStyle = '#ffffff';
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillText('⚗️  CHEMISTRY LAB  [ROOM 304]     ↑', 25, 96);
+    c.fillText('🔬  BIOLOGY LAB    [ROOM 201]     ←', 25, 146);
+    c.fillText('⚡  PHYSICS LAB    [ROOM 101]     →', 25, 196);
+
+    c.fillStyle = '#94a3b8';
+    c.font = '13px "Segoe UI", sans-serif';
+    c.fillText('CAMPUS SCIENCE & TECHNOLOGY COMPLEX', 25, 235);
+  });
+
+/** School Emblem & Crest Texture */
+export const schoolEmblemTexture = () =>
+  canvasTexture(512, 512, (c, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    c.fillStyle = '#0f172a';
+    c.beginPath();
+    c.arc(cx, cy, 230, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#f59e0b';
+    c.lineWidth = 14;
+    c.stroke();
+
+    c.strokeStyle = '#fbbf24';
+    c.lineWidth = 4;
+    c.beginPath();
+    c.arc(cx, cy, 200, 0, Math.PI * 2);
+    c.stroke();
+
+    c.fillStyle = '#f59e0b';
+    c.font = 'bold 24px "Segoe UI", sans-serif';
+    c.textAlign = 'center';
+    c.fillText('HOLOLAB ACADEMY OF SCIENCES', cx, cy - 145);
+    c.font = 'italic 16px "Segoe UI", sans-serif';
+    c.fillText('• VERITAS ET SCIENTIA •', cx, cy + 165);
+
+    c.strokeStyle = '#38bdf8';
+    c.lineWidth = 4;
+    c.save();
+    c.translate(cx, cy);
+    c.beginPath();
+    c.ellipse(0, 0, 90, 35, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.ellipse(0, 0, 90, 35, Math.PI / 3, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.ellipse(0, 0, 90, 35, -Math.PI / 3, 0, Math.PI * 2);
+    c.stroke();
+
+    c.fillStyle = '#f43f5e';
+    c.beginPath();
+    c.arc(0, 0, 18, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  });
+
+/** Futuristic Holographic Tabletop Console Texture (matching Image 1) */
+export const holographicConsoleTexture = () =>
+  canvasTexture(1024, 768, (c, w, h) => {
+    // Clean, high-tech dark cyan/slate medical interface
+    c.fillStyle = '#090d16';
+    c.fillRect(0, 0, w, h);
+
+    // Glowing cyan outer border with angled chamfered corners
+    c.strokeStyle = '#0284c7';
+    c.lineWidth = 6;
+    c.strokeRect(12, 12, w - 24, h - 24);
+    c.strokeStyle = '#38bdf8';
+    c.lineWidth = 2;
+    c.strokeRect(18, 18, w - 36, h - 36);
+
+    // Top status strip
+    c.fillStyle = 'rgba(2, 132, 199, 0.2)';
+    c.fillRect(18, 18, w - 36, 54);
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 22px "Segoe UI", sans-serif';
+    c.fillText('HOLOLAB XR · BIOMETRIC ANATOMICAL CONSOLE', 36, 52);
+    c.font = 'bold 15px "Segoe UI", sans-serif';
+    c.fillStyle = '#34d399';
+    c.fillText('● SYSTEM READY · 3D HOLOGRAPHIC EMITTER ACTIVE', w - 460, 52);
+
+    // Center Display Panel: Cross-Sectional Lungs & Cardiovascular Vascular Diagram (matching Image 1)
+    const px = 80;
+    const py = 110;
+    const pw = w - 160;
+    const ph = h - 220;
+
+    c.fillStyle = '#0f172a';
+    c.fillRect(px, py, pw, ph);
+    c.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    c.lineWidth = 2;
+    c.strokeRect(px, py, pw, ph);
+
+    // Subtle technical grid
+    c.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+    c.lineWidth = 1;
+    for (let x = px; x < px + pw; x += 40) {
+      c.beginPath();
+      c.moveTo(x, py);
+      c.lineTo(x, py + ph);
+      c.stroke();
+    }
+    for (let y = py; y < py + ph; y += 40) {
+      c.beginPath();
+      c.moveTo(px, y);
+      c.lineTo(px + pw, y);
+      c.stroke();
+    }
+
+    // Left anatomical organ diagram: Cross-section of lungs & vascular tree
+    const lx = px + 220;
+    const ly = py + 220;
+    // Trachea
+    c.fillStyle = '#cbd5e1';
+    c.fillRect(lx - 12, ly - 140, 24, 70);
+    for (let r = 0; r < 5; r++) {
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.strokeRect(lx - 12, ly - 135 + r * 12, 24, 6);
+    }
+    // Left & Right Bronchi
+    c.strokeStyle = '#cbd5e1';
+    c.lineWidth = 10;
+    c.beginPath();
+    c.moveTo(lx, ly - 70);
+    c.lineTo(lx - 50, ly - 30);
+    c.moveTo(lx, ly - 70);
+    c.lineTo(lx + 50, ly - 30);
+    c.stroke();
+
+    // Lungs Lobes (Left & Right)
+    c.fillStyle = 'rgba(244, 114, 182, 0.35)';
+    c.strokeStyle = '#f43f5e';
+    c.lineWidth = 3;
+    // Left lung
+    c.beginPath();
+    c.ellipse(lx - 90, ly + 20, 70, 110, -0.15, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // Right lung
+    c.beginPath();
+    c.ellipse(lx + 90, ly + 20, 70, 110, 0.15, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Pulmonary arteries (blue) & veins (red) branching inside lungs
+    c.lineWidth = 3;
+    c.strokeStyle = '#38bdf8';
+    for (let b = 0; b < 6; b++) {
+      c.beginPath();
+      c.moveTo(lx - 30, ly - 20 + b * 20);
+      c.lineTo(lx - 110 + (b % 2) * 20, ly - 10 + b * 25);
+      c.stroke();
+    }
+    c.strokeStyle = '#ef4444';
+    for (let b = 0; b < 6; b++) {
+      c.beginPath();
+      c.moveTo(lx + 30, ly - 20 + b * 20);
+      c.lineTo(lx + 110 - (b % 2) * 20, ly - 10 + b * 25);
+      c.stroke();
+    }
+
+    // Central Heart Silhouette
+    c.fillStyle = '#e11d48';
+    c.beginPath();
+    c.ellipse(lx, ly + 25, 38, 52, 0.2, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 2;
+    c.stroke();
+
+    // Right Side: Technical Biometric Telemetry & Waveform Data
+    const rx = px + pw - 340;
+    c.fillStyle = '#ffffff';
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillText('CARDIOVASCULAR TELEMETRY', rx, py + 40);
+
+    const metrics = [
+      ['HEART RATE', '72 BPM', '#38bdf8'],
+      ['CARDIAC OUTPUT', '5.2 L/min', '#34d399'],
+      ['BLOOD PRESSURE', '120/80 mmHg', '#facc15'],
+      ['PULMONARY RESISTANCE', '0.18 dyn·s/cm⁵', '#cbd5e1'],
+      ['CORE TEMPERATURE', '37.0 °C', '#34d399'],
+      ['BLOOD OXYGEN (SpO2)', '99%', '#38bdf8'],
+    ];
+
+    metrics.forEach(([label, val, col], i) => {
+      const my = py + 75 + i * 44;
+      c.fillStyle = '#94a3b8';
+      c.font = '13px "Segoe UI", sans-serif';
+      c.fillText(label, rx, my);
+      c.fillStyle = col;
+      c.font = 'bold 20px "Courier New", monospace';
+      c.fillText(val, rx + 180, my);
+      c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(rx, my + 8);
+      c.lineTo(rx + 310, my + 8);
+      c.stroke();
+    });
+
+    // Bottom Interactive Touch Control Bar (matching Image 1)
+    const btnW = 160;
+    const btnH = 46;
+    const btnY = h - 85;
+    const buttons = ['SKELETAL', 'MUSCULAR', 'VASCULAR', 'VISCERAL', 'DISSECTION'];
+    buttons.forEach((bText, i) => {
+      const bx = px + 20 + i * (btnW + 18);
+      c.fillStyle = i === 1 || i === 2 ? '#0284c7' : '#1e293b';
+      c.fillRect(bx, btnY, btnW, btnH);
+      c.strokeStyle = '#38bdf8';
+      c.lineWidth = 2;
+      c.strokeRect(bx, btnY, btnW, btnH);
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 14px "Segoe UI", sans-serif';
+      c.textAlign = 'center';
+      c.fillText(bText, bx + btnW / 2, btnY + 28);
+      c.textAlign = 'left';
+    });
+  });
+
+/** Transparent Holographic HUD Screen Texture with Annotations (matching Image 1) */
+export const hologramHudTexture = () =>
+  canvasTexture(1024, 1024, (c, w, h) => {
+    // Subtle translucent holographic blue background
+    c.fillStyle = 'rgba(2, 132, 199, 0.08)';
+    c.fillRect(0, 0, w, h);
+
+    // Glowing cyan holographic outline with corner brackets
+    c.strokeStyle = '#38bdf8';
+    c.lineWidth = 4;
+    const m = 30;
+    // Corners
+    const cs = 50;
+    // Top-left
+    c.beginPath();
+    c.moveTo(m, m + cs);
+    c.lineTo(m, m);
+    c.lineTo(m + cs, m);
+    c.stroke();
+    // Top-right
+    c.beginPath();
+    c.moveTo(w - m - cs, m);
+    c.lineTo(w - m, m);
+    c.lineTo(w - m, m + cs);
+    c.stroke();
+    // Bottom-left
+    c.beginPath();
+    c.moveTo(m, h - m - cs);
+    c.lineTo(m, h - m);
+    c.lineTo(m + cs, h - m);
+    c.stroke();
+    // Bottom-right
+    c.beginPath();
+    c.moveTo(w - m - cs, h - m);
+    c.lineTo(w - m, h - m);
+    c.lineTo(w - m, h - m - cs);
+    c.stroke();
+
+    // Holographic calibration crosshairs
+    c.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    c.lineWidth = 1.5;
+    for (let y = 100; y < h - 100; y += 120) {
+      c.beginPath();
+      c.moveTo(m + 10, y);
+      c.lineTo(m + 25, y);
+      c.moveTo(w - m - 25, y);
+      c.lineTo(w - m - 10, y);
+      c.stroke();
+    }
+
+    // Technical Anatomical Annotations & Caliper Lines
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 20px "Segoe UI", sans-serif';
+    c.fillText('3D VOLUMETRIC ANATOMY MODEL #HUMAN-M42', 60, 70);
+
+    c.font = '14px "Segoe UI", sans-serif';
+    c.fillStyle = '#e0f2fe';
+    // Pointer line to Thoracic Ribcage
+    c.fillText('1. THORACIC SKELETAL CAGE', 60, 220);
+    c.fillText('   • Sternum & Costal Cartilages (12 Pairs)', 60, 245);
+    c.strokeStyle = '#38bdf8';
+    c.beginPath();
+    c.moveTo(320, 235);
+    c.lineTo(460, 235);
+    c.lineTo(500, 270);
+    c.stroke();
+
+    // Pointer line to Muscular System
+    c.fillText('2. SUPERFICIAL MUSCULATURE', 60, 420);
+    c.fillText('   • Pectoralis Major & Rectus Abdominis', 60, 445);
+    c.beginPath();
+    c.moveTo(340, 435);
+    c.lineTo(450, 435);
+    c.lineTo(490, 450);
+    c.stroke();
+
+    // Pointer line to Cardiovascular Circuit
+    c.fillText('3. SYSTEMIC & PULMONARY VASCULATURE', w - 440, 320);
+    c.fillText('   • Arterial Tree (Red) / Venous Return (Blue)', w - 440, 345);
+    c.beginPath();
+    c.moveTo(w - 450, 335);
+    c.lineTo(580, 335);
+    c.lineTo(540, 350);
+    c.stroke();
+
+    // Pointer line to Cranial Structure
+    c.fillText('4. CRANIAL & CERVICAL NEUROVASCULAR', w - 440, 160);
+    c.fillText('   • Carotid Arteries & Cranial Vault', w - 440, 185);
+    c.beginPath();
+    c.moveTo(w - 450, 175);
+    c.lineTo(560, 175);
+    c.lineTo(520, 140);
+    c.stroke();
+
+    // Bottom telemetry bar
+    c.fillStyle = 'rgba(2, 132, 199, 0.3)';
+    c.fillRect(m, h - 90, w - m * 2, 50);
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 16px "Courier New", monospace';
+    c.fillText('HR: 72 bpm   |   SpO2: 99%   |   BP: 120/80   |   TEMP: 37.0°C   |   STATUS: NOMINAL', m + 30, h - 58);
+  });
+
+/** Dual Medical Diagnostic Workstation Monitor Texture (matching Image 2) */
+export const mriDiagnosticTexture = () =>
+  canvasTexture(1024, 512, (c, w, h) => {
+    c.fillStyle = '#0a0f1d';
+    c.fillRect(0, 0, w, h);
+
+    // Screen 1 (Left): Cranial MRI Brain Scans & Cross Sections
+    const sw = w / 2 - 8;
+    c.fillStyle = '#020617';
+    c.fillRect(4, 4, sw, h - 8);
+    c.strokeStyle = '#1e293b';
+    c.lineWidth = 2;
+    c.strokeRect(4, 4, sw, h - 8);
+
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillText('CRANIAL MRI / NEURAL TOMOGRAPHY', 20, 34);
+
+    // 3 Circular MRI Brain Scan Slices (matching Image 2)
+    const mriCenters = [
+      [100, 130, 60],
+      [240, 130, 60],
+      [380, 130, 60],
+    ];
+    mriCenters.forEach(([cx, cy, rad], idx) => {
+      // Glow circle
+      c.fillStyle = '#0f172a';
+      c.beginPath();
+      c.arc(cx, cy, rad, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#0284c7';
+      c.lineWidth = 3;
+      c.stroke();
+
+      // Brain parenchyma slice
+      c.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      c.beginPath();
+      c.ellipse(cx, cy, rad * 0.75, rad * 0.85, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#38bdf8';
+      c.lineWidth = 1.5;
+      c.stroke();
+
+      // Sulci / Gyri convolutions
+      c.strokeStyle = '#e0f2fe';
+      c.lineWidth = 1;
+      for (let s = -2; s <= 2; s++) {
+        c.beginPath();
+        c.arc(cx + s * 10, cy, 20 + Math.abs(s) * 6, 0, Math.PI);
+        c.stroke();
+      }
+
+      c.fillStyle = '#94a3b8';
+      c.font = '12px "Segoe UI", sans-serif';
+      c.textAlign = 'center';
+      c.fillText(['AXIAL', 'CORONAL', 'SAGITTAL'][idx], cx, cy + rad + 24);
+      c.textAlign = 'left';
+    });
+
+    // Telemetry text below MRI
+    c.fillStyle = '#64748b';
+    c.font = '12px "Courier New", monospace';
+    c.fillText('SCAN SEQ: T1-WEIGHTED BRAIN PROFILE   SLICE: 4.0 mm', 20, 240);
+    c.fillText('INTRACRANIAL PRESSURE: 11 mmHg (NORMAL)', 20, 260);
+    c.fillText('CEREBRAL PERFUSION: 54 mL/100g/min', 20, 280);
+
+    // Screen 2 (Right): Live ECG Electrocardiogram & Biometrics
+    const rx = w / 2 + 4;
+    c.fillStyle = '#020617';
+    c.fillRect(rx, 4, sw, h - 8);
+    c.strokeStyle = '#1e293b';
+    c.lineWidth = 2;
+    c.strokeRect(rx, 4, sw, h - 8);
+
+    c.fillStyle = '#34d399';
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillText('REAL-TIME ECG & HEMODYNAMICS', rx + 16, 34);
+
+    // ECG Graph Grid
+    const gx = rx + 16;
+    const gy = 55;
+    const gw = sw - 32;
+    const gh = 180;
+    c.fillStyle = '#051814';
+    c.fillRect(gx, gy, gw, gh);
+    c.strokeStyle = 'rgba(52, 211, 153, 0.2)';
+    c.lineWidth = 1;
+    for (let x = gx; x < gx + gw; x += 25) {
+      c.beginPath();
+      c.moveTo(x, gy);
+      c.lineTo(x, gy + gh);
+      c.stroke();
+    }
+    for (let y = gy; y < gy + gh; y += 25) {
+      c.beginPath();
+      c.moveTo(gx, y);
+      c.lineTo(gx + gw, y);
+      c.stroke();
+    }
+
+    // Green Phosphor ECG Waveform Trace (P-Q-R-S-T)
+    c.strokeStyle = '#34d399';
+    c.lineWidth = 3;
+    c.beginPath();
+    let cx = gx;
+    const baseLine = gy + gh / 2;
+    while (cx < gx + gw - 40) {
+      c.moveTo(cx, baseLine);
+      cx += 20;
+      c.lineTo(cx, baseLine);
+      // P wave
+      cx += 12;
+      c.lineTo(cx, baseLine - 16);
+      cx += 12;
+      c.lineTo(cx, baseLine);
+      cx += 15;
+      c.lineTo(cx, baseLine);
+      // QRS Complex
+      cx += 6;
+      c.lineTo(cx, baseLine + 10); // Q
+      cx += 8;
+      c.lineTo(cx, baseLine - 70); // R peak
+      cx += 8;
+      c.lineTo(cx, baseLine + 25); // S trough
+      cx += 6;
+      c.lineTo(cx, baseLine);
+      cx += 20;
+      c.lineTo(cx, baseLine);
+      // T wave
+      cx += 16;
+      c.lineTo(cx, baseLine - 26);
+      cx += 16;
+      c.lineTo(cx, baseLine);
+      cx += 25;
+      c.lineTo(cx, baseLine);
+    }
+    c.stroke();
+
+    // Vital Stats underneath ECG
+    c.fillStyle = '#34d399';
+    c.font = 'bold 36px "Courier New", monospace';
+    c.fillText('72 BPM', rx + 20, gy + gh + 50);
+    c.font = 'bold 16px "Segoe UI", sans-serif';
+    c.fillStyle = '#94a3b8';
+    c.fillText('SINUS RHYTHM', rx + 20, gy + gh + 75);
+
+    c.fillStyle = '#38bdf8';
+    c.font = 'bold 36px "Courier New", monospace';
+    c.fillText('99 %', rx + 220, gy + gh + 50);
+    c.font = 'bold 16px "Segoe UI", sans-serif';
+    c.fillStyle = '#94a3b8';
+    c.fillText('O₂ SATURATION', rx + 220, gy + gh + 75);
+
+    c.fillStyle = '#facc15';
+    c.font = 'bold 32px "Courier New", monospace';
+    c.fillText('120 / 80', rx + 360, gy + gh + 50);
+    c.font = 'bold 16px "Segoe UI", sans-serif';
+    c.fillStyle = '#94a3b8';
+    c.fillText('BLOOD PRESSURE', rx + 360, gy + gh + 75);
+  });
+
+
+/** Architectural Building Facade Placard */
+export const buildingPlacardTexture = (title: string, subtitle: string) =>
+  canvasTexture(512, 128, (c, w, h) => {
+    // Dark oxidized bronze slab
+    c.fillStyle = '#1e293b';
+    c.fillRect(0, 0, w, h);
+
+    // Beveled brass frame
+    c.strokeStyle = '#d97706';
+    c.lineWidth = 6;
+    c.strokeRect(4, 4, w - 8, h - 8);
+
+    c.strokeStyle = '#fbbf24';
+    c.lineWidth = 2;
+    c.strokeRect(10, 10, w - 20, h - 20);
+
+    // Embossed gold typography
+    c.fillStyle = '#fbbf24';
+    c.font = 'bold 24px "Segoe UI", sans-serif';
+    c.textAlign = 'center';
+    c.fillText(title, w / 2, 48);
+
+    c.fillStyle = '#fef3c7';
+    c.font = 'bold 18px "Segoe UI", sans-serif';
+    c.fillText(subtitle, w / 2, 86);
+
+    c.fillStyle = '#94a3b8';
+    c.font = '12px "Segoe UI", sans-serif';
+    c.fillText('HOLOLAB ACADEMY OF SCIENCES', w / 2, 110);
+  });
+
+/** Laser Radiation Safety Sign: Official ANSI Z136 / IEC 60825-1 Laboratory Hazard Placard */
+export const laserSafetyTexture = () =>
+  canvasTexture(512, 700, (c, w, h) => {
+    // White rigid PVC sign backing
+    c.fillStyle = '#ffffff';
+    c.fillRect(0, 0, w, h);
+
+    // Outer border
+    c.strokeStyle = '#0f172a';
+    c.lineWidth = 8;
+    c.strokeRect(4, 4, w - 8, h - 8);
+
+    // Upper Hazard Header (Vivid Danger Red / Yellow)
+    c.fillStyle = '#dc2626';
+    c.fillRect(10, 10, w - 20, 110);
+
+    // Inner danger oval badge
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.ellipse(w / 2, 65, 180, 42, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#dc2626';
+    c.beginPath();
+    c.ellipse(w / 2, 65, 172, 36, 0, 0, Math.PI * 2);
+    c.fill();
+
+    c.fillStyle = '#ffffff';
+    c.font = '900 44px "Arial Black", "Segoe UI", sans-serif';
+    c.textAlign = 'center';
+    c.fillText('DANGER', w / 2, 80);
+
+    // Yellow warning band
+    c.fillStyle = '#facc15';
+    c.fillRect(10, 125, w - 20, 52);
+    c.fillStyle = '#0f172a';
+    c.font = 'bold 24px "Segoe UI", sans-serif';
+    c.fillText('LASER RADIATION HAZARD', w / 2, 160);
+
+    // Laser Sunburst Hazard Symbol (ISO 7010-W004)
+    const symY = 270;
+    c.save();
+    c.translate(w / 2, symY);
+
+    // Hazard triangle
+    c.beginPath();
+    c.moveTo(0, -75);
+    c.lineTo(80, 60);
+    c.lineTo(-80, 60);
+    c.closePath();
+    c.fillStyle = '#fde047';
+    c.fill();
+    c.strokeStyle = '#000000';
+    c.lineWidth = 10;
+    c.stroke();
+
+    // Central sunburst disc
+    c.fillStyle = '#000000';
+    c.beginPath();
+    c.arc(0, 10, 16, 0, Math.PI * 2);
+    c.fill();
+
+    // Radial laser bursts
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * Math.PI) / 6;
+      c.save();
+      c.rotate(angle);
+      c.fillRect(-2, 18, 4, 18);
+      c.restore();
+    }
+    // Directed horizontal coherent ray
+    c.fillRect(16, 8, 40, 5);
+    c.restore();
+
+    // Primary Instruction text
+    c.fillStyle = '#0f172a';
+    c.font = 'bold 22px "Segoe UI", sans-serif';
+    c.fillText('AVOID DIRECT EYE OR SKIN EXPOSURE', w / 2, 385);
+    c.fillText('TO DIRECT OR SCATTERED BEAM', w / 2, 415);
+
+    // Technical Specifications Box
+    c.fillStyle = '#f1f5f9';
+    c.fillRect(30, 445, w - 60, 160);
+    c.strokeStyle = '#94a3b8';
+    c.lineWidth = 2;
+    c.strokeRect(30, 445, w - 60, 160);
+
+    c.textAlign = 'left';
+    c.fillStyle = '#1e293b';
+    c.font = 'bold 16px "Courier New", monospace';
+    c.fillText('CLASSIFICATION : CLASS 3B / CLASS 4', 45, 478);
+    c.fillText('EMISSION WAVEL : 400 nm - 700 nm (VIS)', 45, 508);
+    c.fillText('MAX POWER OUT  : < 500 mW CW', 45, 538);
+    c.fillText('EYEWEAR REQD   : OD 5+ @ 400-700nm', 45, 568);
+    c.fillText('STANDARD COMPL : ANSI Z136.1 / IEC 60825', 45, 595);
+
+    // Safety Footer bar
+    c.fillStyle = '#0f172a';
+    c.fillRect(10, 625, w - 20, 65);
+    c.fillStyle = '#f8fafc';
+    c.textAlign = 'center';
+    c.font = 'bold 16px "Segoe UI", sans-serif';
+    c.fillText('PROTECTIVE EYEWEAR REQUIRED IN THIS AREA', w / 2, 652);
+    c.fillStyle = '#94a3b8';
+    c.font = '12px "Segoe UI", sans-serif';
+    c.fillText('DEPARTMENT OF APPLIED MECHANICS & OPTICS', w / 2, 674);
+  });
+

@@ -88,7 +88,7 @@ export interface VesselOptions {
 /** Anything that holds a mixture: beakers, test tubes, reagent bottles, the sink. */
 export class Vessel {
   readonly root = new THREE.Group();
-  readonly liquid: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>;
+  readonly liquid: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshPhysicalMaterial>;
   readonly solids = new THREE.Group();
   readonly glass?: THREE.Mesh;
   mix: Mixture = emptyMix();
@@ -137,13 +137,17 @@ export class Vessel {
 
     this.liquid = new THREE.Mesh(
       new THREE.CylinderGeometry(1, 1, 1, 24),
-      new THREE.MeshStandardMaterial({
+      new THREE.MeshPhysicalMaterial({
         color: 0xcfe6f5,
-        roughness: 0.08,
+        roughness: 0.05,
+        metalness: 0.0,
+        transmission: 0.85,
+        ior: 1.333,
+        thickness: 0.06,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.5,
         depthWrite: false,
-        envMapIntensity: 0.8,
+        envMapIntensity: 1.2,
       }),
     );
     this.liquid.renderOrder = 1;
@@ -152,7 +156,17 @@ export class Vessel {
     // The liquid's top surface: shinier and a touch lighter, like a real meniscus catching light.
     this.surface = new THREE.Mesh(
       new THREE.CircleGeometry(1, 28),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.02, transparent: true, opacity: 0.5, depthWrite: false, envMapIntensity: 2 }),
+      new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        roughness: 0.02,
+        metalness: 0.0,
+        transmission: 0.9,
+        ior: 1.333,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        envMapIntensity: 2,
+      }),
     );
     this.surface.renderOrder = 1;
     this.surface.visible = false;
@@ -162,7 +176,7 @@ export class Vessel {
     this.root.add(this.liquid, this.surface, this.solids);
   }
 
-  private readonly surface: THREE.Mesh<THREE.CircleGeometry, THREE.MeshStandardMaterial>;
+  private readonly surface: THREE.Mesh<THREE.CircleGeometry, THREE.MeshPhysicalMaterial>;
 
   get fill() {
     if (this.infinite) return this.shownFill;
@@ -173,8 +187,14 @@ export class Vessel {
   liquidHeight() {
     const usable = this.neckStart ?? this.height * 0.92;
     if (this.infinite) return this.shownFill * usable;
+    if (this.mix.volume <= 0.0001) return 0;
     const area = Math.PI * this.radius * this.radius;
-    return Math.min(usable, (this.mix.volume * 1e-6) / area);
+    // Scale analytical test drops for clear visibility in 30mm boiling tubes
+    const visualVol = Math.max(this.mix.volume * 4.5, 0);
+    const linearH = (visualVol * 1e-6) / area;
+    // For test tubes and vessels, drops pool into a visible liquid column (at least 24mm in a test tube to clear the rack bottom)
+    const minVisible = this.height > 0.12 ? 0.024 : 0.012;
+    return Math.min(usable, Math.max(minVisible, linearH));
   }
 
   mouthWorld(target: THREE.Vector3) {
@@ -195,7 +215,7 @@ export class Vessel {
    */
   updateLook() {
     const h = this.liquidHeight();
-    const show = h > 0.0008 && !this.sink;
+    const show = (this.mix.volume > 0.0001 || this.infinite) && h > 0.001 && !this.sink;
     this.liquid.visible = show;
     this.surface.visible = show;
     if (!show) return;
@@ -204,7 +224,7 @@ export class Vessel {
     this.liquid.scale.set(r, usable, r);
     this.liquid.position.y = usable / 2 + 0.001;
 
-    this.root.updateMatrixWorld();
+    this.root.updateMatrixWorld(true);
     this.root.getWorldQuaternion(_q);
     const axis = _axis.set(0, 1, 0).applyQuaternion(_q);
     const base = this.root.getWorldPosition(_base);
@@ -223,11 +243,14 @@ export class Vessel {
     this.surface.position.copy(this.root.worldToLocal(level.clone()));
     this.surface.scale.set(r / cos, r, 1);
 
-    const { color, opacity } = this.tint(this.mix);
+    const { color, opacity, transmission = 0.85 } = this.tint(this.mix);
     this.liquid.material.color.setHex(color);
-    this.liquid.material.opacity = Math.min(0.92, opacity + 0.1);
+    this.liquid.material.opacity = Math.max(0.82, Math.min(0.96, opacity + 0.15));
+    // Rich visible transmission for authentic glassware viewing
+    this.liquid.material.transmission = THREE.MathUtils.clamp(transmission * 0.5, 0.05, 0.65);
     this.surface.material.color.setHex(color).lerp(WHITE, 0.25);
-    this.surface.material.opacity = Math.min(0.95, opacity + 0.25);
+    this.surface.material.opacity = Math.max(0.85, Math.min(0.98, opacity + 0.25));
+    this.surface.material.transmission = THREE.MathUtils.clamp(transmission * 0.5, 0.05, 0.65);
   }
 
   private readonly levelPlane = new THREE.Plane();
@@ -323,59 +346,133 @@ export interface ReagentInfo {
   name: () => string;
   detail: string; // concentration or grade, e.g. "0.1 M", "10%"
   band: string; // colour band: red for acids, blue for bases, …
-  hazard?: 'corrosive' | 'oxidiser' | 'irritant';
+  hazard?: 'corrosive' | 'oxidiser' | 'irritant' | 'flammable' | 'toxic';
+  cas?: string;
+  mw?: string; // molecular weight e.g. "36.46 g/mol"
+  grade?: string; // e.g. "ACS Reagent", "AR Grade"
 }
 
-/** A reagent-bottle label: coloured band with the name, big formula, concentration, hazard diamond. */
+/** Standard chemical registry lookups for authentic reagent labels. */
+const CHEMICAL_DATA: Record<string, { cas: string; mw: string; grade: string; hazardTitle: string }> = {
+  'HCl': { cas: '7647-01-0', mw: '36.46 g/mol', grade: 'ACS REAGENT GRADE', hazardTitle: 'ACID REAGENT' },
+  'NaOH': { cas: '1310-73-2', mw: '40.00 g/mol', grade: 'ANALYTICAL REAGENT', hazardTitle: 'ALKALI REAGENT' },
+  'H₂O': { cas: '7732-18-5', mw: '18.02 g/mol', grade: 'PURIFIED · DEIONIZED', hazardTitle: 'SOLVENT' },
+  'H₂O₂': { cas: '7722-84-1', mw: '34.01 g/mol', grade: 'USP STABILIZED', hazardTitle: 'OXIDIZING AGENT' },
+  'Zn': { cas: '7440-66-6', mw: '65.38 g/mol', grade: 'PURISS ≥ 99.0%', hazardTitle: 'METAL GRANULES' },
+  'MnO₂': { cas: '1313-13-9', mw: '86.94 g/mol', grade: 'PYROLUSITE ≥ 99.0%', hazardTitle: 'CATALYST GRADE' },
+};
+
+/** A high-fidelity analytical reagent bottle label with CAS, formula weight, GHS diamond, and grade. */
 export const reagentLabel =
   (r: ReagentInfo): Draw =>
   (c, W, H) => {
-    c.fillStyle = '#f8f5ea';
+    const meta = CHEMICAL_DATA[r.formula] || {
+      cas: r.cas || '100-00-0',
+      mw: r.mw || '',
+      grade: r.grade || 'ACS ANALYTICAL GRADE',
+      hazardTitle: 'CHEMICAL REAGENT',
+    };
+    const cas = r.cas || meta.cas;
+    const mw = r.mw || meta.mw;
+    const grade = r.grade || meta.grade;
+
+    // Background paper
+    c.fillStyle = '#faf8f2';
     c.fillRect(0, 0, W, H);
-    const band = H * 0.28;
+
+    // Fine security border
+    c.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    c.lineWidth = Math.max(2, H * 0.02);
+    c.strokeRect(H * 0.02, H * 0.02, W - H * 0.04, H - H * 0.04);
+
+    // Top classification color band
+    const bandH = H * 0.25;
     c.fillStyle = r.band;
-    c.fillRect(0, 0, W, band);
+    c.fillRect(0, 0, W, bandH);
+
+    // White classification header (e.g. "HYDROCHLORIC ACID")
     c.fillStyle = '#ffffff';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     const name = r.name().toUpperCase();
-    c.font = `700 ${band * 0.5}px ${FONT}`;
-    fitText(c, name, W * 0.9, band * 0.5, 700);
-    c.fillText(name, W / 2, band * 0.53);
+    c.font = `800 ${bandH * 0.44}px ${FONT}`;
+    fitText(c, name, W * 0.92, bandH * 0.44, 800);
+    c.fillText(name, W / 2, bandH * 0.52);
 
+    // Sub-header grade strip
+    const subH = H * 0.09;
+    c.fillStyle = '#ece9de';
+    c.fillRect(0, bandH, W, subH);
+    c.fillStyle = '#475569';
+    c.font = `700 ${subH * 0.52}px ${FONT}`;
+    fitText(c, grade, W * 0.9, subH * 0.52, 700);
+    c.fillText(grade, W / 2, bandH + subH * 0.52);
+
+    // Main section
     const hasHazard = !!r.hazard;
-    const textW = hasHazard ? W * 0.68 : W * 0.9;
-    const cx = hasHazard ? W * 0.39 : W / 2;
-    c.fillStyle = '#16212c';
-    c.font = `800 ${H * 0.34}px ${FONT}`;
-    fitText(c, r.formula, textW, H * 0.34, 800);
-    c.fillText(r.formula, cx, band + H * 0.24);
-    c.fillStyle = '#3a4754';
-    c.font = `700 ${H * 0.17}px ${FONT}`;
-    fitText(c, r.detail, textW, H * 0.17, 700);
-    c.fillText(r.detail, cx, band + H * 0.52);
+    const textW = hasHazard ? W * 0.62 : W * 0.88;
+    const cx = hasHazard ? W * 0.36 : W / 2;
 
+    // Big prominent chemical formula
+    c.fillStyle = '#0f172a';
+    c.font = `900 ${H * 0.28}px ${FONT}`;
+    fitText(c, r.formula, textW, H * 0.28, 900);
+    c.fillText(r.formula, cx, bandH + subH + H * 0.17);
+
+    // Concentration / detail specification
+    c.fillStyle = '#1e293b';
+    c.font = `700 ${H * 0.12}px ${FONT}`;
+    fitText(c, r.detail, textW, H * 0.12, 700);
+    c.fillText(r.detail, cx, bandH + subH + H * 0.35);
+
+    // CAS and Formula Weight
+    const specLine = [cas ? `CAS: ${cas}` : '', mw ? `M: ${mw}` : ''].filter(Boolean).join('  ·  ');
+    if (specLine) {
+      c.fillStyle = '#64748b';
+      c.font = `600 ${H * 0.08}px ${FONT}`;
+      fitText(c, specLine, textW, H * 0.08, 600);
+      c.fillText(specLine, cx, bandH + subH + H * 0.47);
+    }
+
+    // GHS Hazard Diamond
     if (r.hazard) {
-      // GHS-style red diamond with a simple pictogram.
-      const s = H * 0.26;
-      const x = W * 0.84;
-      const y = band + H * 0.36;
+      const s = H * 0.28;
+      const hx = W * 0.82;
+      const hy = bandH + subH + H * 0.26;
+
       c.save();
-      c.translate(x, y);
+      c.translate(hx, hy);
       c.rotate(Math.PI / 4);
       c.fillStyle = '#ffffff';
       c.fillRect(-s / 2, -s / 2, s, s);
-      c.strokeStyle = '#d21f1f';
-      c.lineWidth = s * 0.1;
+      c.strokeStyle = '#dc2626';
+      c.lineWidth = Math.max(3, s * 0.12);
       c.strokeRect(-s / 2, -s / 2, s, s);
       c.restore();
-      c.fillStyle = '#111111';
-      c.font = `900 ${s * 0.75}px ${FONT}`;
-      c.fillText(r.hazard === 'oxidiser' ? '◯' : r.hazard === 'corrosive' ? '⚗' : '!', x, y + s * 0.04);
+
+      c.fillStyle = '#111827';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      if (r.hazard === 'corrosive') {
+        c.font = `900 ${s * 0.65}px ${FONT}`;
+        c.fillText('⚗', hx, hy + s * 0.02);
+      } else if (r.hazard === 'oxidiser') {
+        c.font = `900 ${s * 0.65}px ${FONT}`;
+        c.fillText('◯', hx, hy);
+      } else if (r.hazard === 'flammable') {
+        c.font = `900 ${s * 0.65}px ${FONT}`;
+        c.fillText('🔥', hx, hy);
+      } else {
+        c.font = `900 ${s * 0.72}px ${FONT}`;
+        c.fillText('!', hx, hy + s * 0.02);
+      }
     }
-    c.strokeStyle = 'rgba(0,0,0,0.25)';
-    c.lineWidth = 2;
-    c.strokeRect(1, 1, W - 2, H - 2);
+
+    // Bottom warning bar
+    c.fillStyle = '#94a3b8';
+    c.font = `700 ${H * 0.065}px ${FONT}`;
+    c.textAlign = 'center';
+    c.fillText('LABORATORY USE ONLY · AR QUALITY STANDARD', W / 2, H * 0.94);
   };
 
 /** Shrink the font until `text` fits `maxW`. */

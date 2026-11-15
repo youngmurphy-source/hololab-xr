@@ -37,6 +37,14 @@ export class Flame {
     }
   }
 
+  setColor(outerHex: number, innerHex: number, lightHex?: number) {
+    (this.outer.material as THREE.MeshBasicMaterial).color.setHex(outerHex);
+    (this.inner.material as THREE.MeshBasicMaterial).color.setHex(innerHex);
+    if (this.light && lightHex !== undefined) {
+      this.light.color.setHex(lightHex);
+    }
+  }
+
   update(dt: number) {
     this.group.visible = this.lit;
     if (!this.lit) return;

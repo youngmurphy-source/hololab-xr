@@ -6,23 +6,39 @@ import { Lab, type UsageEntry } from './core/lab';
 import { WorldPanel } from './core/panel';
 import { NameTag } from './core/tag';
 import { Recorder } from './core/recorder';
-import { redrawLocalized, setActiveTopic } from './core/textures';
-import { BENCH, buildRoom, ROOM, TABLE_MAX, TABLE_MIN } from './core/room';
-import { LabAvatar } from './core/avatar';
+import { canvasTexture, setActiveTopic } from './core/textures';
+import { BENCH, buildRoom, TABLE_MAX, TABLE_MIN } from './core/room';
+import { buildBiologyLab, type BiologyLabInstance } from './core/biologyLab';
+import { DesktopBiologyConsole } from './core/desktopBiologyConsole';
+import { buildPhysicsLab } from './core/physicsLab';
+import { buildCampusSchool } from './core/campusGarden';
+import { buildSupermarketBuilding, type SupermarketBuildingResult } from './core/supermarketBuilding';
 import type { Tool } from './core/tools';
-import { getLang, onLangChange, setLang, t, type Key } from './i18n';
+import { t, type Key } from './i18n';
 import { TOPICS } from './topics';
 import type { TopicDef } from './topics/topic';
 import { departmentManager, DEPARTMENTS } from './services/departmentManager';
 import { SupermarketService } from '../server/src/store/storeService';
 import type { Department } from './types/platform';
+import { HandInteractionController } from './handTracking';
+import { telemetryRecorder } from './services/telemetryRecorder';
+import { QRCodeGenerator } from './services/qrCodeGenerator';
+import { PDFReportGenerator } from './services/pdfReportGenerator';
+import {
+  attachMotionButton,
+  attachMotionTilt,
+  motionAnimate,
+  staggerEntrance,
+  triggerCelebrationBounce,
+} from './core/motion';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 export class App {
+  public readonly handInteraction: HandInteractionController;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.02, 30);
+  private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.05, 120);
   private readonly rig = new THREE.Group();
   private readonly controls: OrbitControls;
   private readonly panel = new WorldPanel();
@@ -50,8 +66,15 @@ export class App {
   /** The board needs redrawing for a new table height (done a few times a second at most). */
   private tableDirty = false;
   private xrSupported = false;
-  private readonly avatar = new LabAvatar();
-  private viewMode: 'firstPerson' | 'thirdPerson' | 'class360' = 'thirdPerson';
+  private viewMode: 'firstPerson' | 'class360' = 'firstPerson';
+  private readonly chemLabGroup = new THREE.Group();
+  private chemRoomUpdate?: (dt: number) => void;
+  private readonly bioLab: BiologyLabInstance;
+  private readonly desktopBioConsole: DesktopBiologyConsole;
+  private readonly physicsLab: { root: THREE.Group; update: (dt: number) => void };
+  private readonly campusSchool: { root: THREE.Group; update: (dt: number) => void };
+  private readonly supermarketBuilding: SupermarketBuildingResult;
+  private activeDept: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket' = 'chemistry';
 
   constructor(container: HTMLElement) {
     const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -70,6 +93,8 @@ export class App {
     r.xr.setFramebufferScaleFactor(1.1);
     container.appendChild(r.domElement);
     this.renderer = r;
+    (window as any).hololab = this;
+    (window as any).threeRenderer = r;
 
     this.scene.background = new THREE.Color(0x30363a);
     try {
@@ -78,28 +103,75 @@ export class App {
     } catch {
       /* storage blocked */
     }
-    this.bench = buildRoom(this.scene).bench;
+    // Position the 3 separate buildings on the school campus grounds:
+    // Building A: Chemistry Laboratory (North Building)
+    this.chemLabGroup.name = 'ChemistryBuilding';
+    this.chemLabGroup.position.set(0, 0, -16);
+    const chemRoom = buildRoom(this.chemLabGroup);
+    this.bench = chemRoom.bench;
+    this.chemRoomUpdate = chemRoom.update;
+    this.scene.add(this.chemLabGroup);
+
+    // Building B: Biology & Life Sciences Pavilion (West Building)
+    this.bioLab = buildBiologyLab();
+    this.desktopBioConsole = new DesktopBiologyConsole(this.bioLab.console);
+    this.bioLab.root.position.set(-22, 0, 4);
+    this.bioLab.root.rotation.y = Math.PI / 2; // Entrance faces East towards Central Plaza
+    this.scene.add(this.bioLab.root);
+
+    // Building C: Physics & Applied Mechanics Institute (East Building)
+    this.physicsLab = buildPhysicsLab();
+    this.physicsLab.root.position.set(22, 0, 4);
+    this.physicsLab.root.rotation.y = -Math.PI / 2; // Entrance faces West towards Central Plaza
+    this.scene.add(this.physicsLab.root);
+
+    // School Campus Environment (Central Quadrangle Plaza, Lawns, Monument & Avenues)
+    this.campusSchool = buildCampusSchool();
+    this.scene.add(this.campusSchool.root);
+
+    // Building D: HoloLab Science Supermarket & Procurement Center (South-East Quadrangle)
+    this.supermarketBuilding = buildSupermarketBuilding();
+    this.supermarketBuilding.root.position.set(18, 0, 18);
+    this.supermarketBuilding.root.rotation.y = Math.PI; // Entrance faces North towards Quadrangle Plaza
+    this.scene.add(this.supermarketBuilding.root);
+
+    // Global campus sunlight and ambient illumination for all buildings & outdoor grounds
+    const sun = new THREE.DirectionalLight(0xfff8ee, 1.85);
+    sun.position.set(16, 28, 22);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -45;
+    sun.shadow.camera.right = 45;
+    sun.shadow.camera.top = 45;
+    sun.shadow.camera.bottom = -45;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 90;
+    this.scene.add(sun);
+
+    const hemi = new THREE.HemisphereLight(0xe0f2fe, 0x334155, 1.05);
+    this.scene.add(hemi);
+
     // Reflections come from the room itself, so glass mirrors the real walls, windows and lights.
-    const pmrem = new THREE.PMREMGenerator(r);
-    this.scene.environment = pmrem.fromScene(this.scene, 0.015, 0.05, 20, { position: new THREE.Vector3(0, 1.3, -0.45) }).texture;
-    this.scene.environmentIntensity = 0.7;
-    pmrem.dispose();
+    try {
+      const pmrem = new THREE.PMREMGenerator(r);
+      this.scene.environment = pmrem.fromScene(this.scene, 0.04).texture;
+      this.scene.environmentIntensity = 0.7;
+      pmrem.dispose();
+    } catch {
+      /* PMREM fallback */
+    }
 
     this.rig.add(this.camera);
-    this.scene.add(this.rig, this.panel.mesh, this.tag.sprite, this.avatar.root);
+    this.scene.add(this.rig, this.panel.mesh, this.tag.sprite);
 
     this.controls = new OrbitControls(this.camera, r.domElement);
-    // Aim between the bench and the task board so both are in view.
-    this.controls.target.set(-0.02, BENCH.top + 0.06, BENCH.z - 0.08);
     this.controls.enablePan = true;
     this.controls.panSpeed = 1.0;
     this.controls.screenSpacePanning = true;
     this.controls.enableDamping = true;
-    this.controls.minDistance = 0.15;
-    this.controls.maxDistance = 5.5;
     this.controls.minPolarAngle = 0.05;
     this.controls.maxPolarAngle = Math.PI - 0.05;
-    // Full 360-degree rotation unconstrained around the classroom
+    this.focusActiveDept();
 
     this.input = new Input({
       camera: this.camera,
@@ -118,11 +190,81 @@ export class App {
     this.panel.onButton = (id) => this.onButton(id);
     this.setupOverlay();
     this.setupSchoolPlatformUI();
-    onLangChange(() => this.relabel());
 
-    const fromUrl = new URLSearchParams(location.search).get('topic');
-    this.loadTopic(TOPICS.find((tp) => tp.id === fromUrl && tp.ready)?.id ?? TOPICS[0].id);
+    this.handInteraction = new HandInteractionController({
+      canvas: r.domElement,
+      input: this.input,
+      onTableNudge: (dy) => this.setTable(BENCH.top + dy, true),
+      onRotateView: (dAngle) => {
+        if (!this.renderer.xr.isPresenting) {
+          if (!Number.isFinite(dAngle) || Math.abs(dAngle) < 1e-4) return;
+          const pos = this.camera.position;
+          const target = this.controls.target;
+          const radius = Math.hypot(pos.x - target.x, pos.z - target.z);
+          if (!Number.isFinite(radius) || radius < 0.08) return;
+          const currAngle = Math.atan2(pos.z - target.z, pos.x - target.x);
+          const newAngle = currAngle + dAngle * 0.8;
+          pos.x = target.x + Math.cos(newAngle) * radius;
+          pos.z = target.z + Math.sin(newAngle) * radius;
+          this.camera.lookAt(target);
+          this.controls.update();
+        }
+      },
+      onZoomView: (dZoom) => {
+        if (!this.renderer.xr.isPresenting) {
+          if (!Number.isFinite(dZoom) || Math.abs(dZoom) < 1e-4) return;
+          const dist = this.camera.position.distanceTo(this.controls.target);
+          if (dist - dZoom * 2 < (this.controls.minDistance || 0.15)) return;
+          const dir = new THREE.Vector3();
+          this.camera.getWorldDirection(dir);
+          this.camera.position.addScaledVector(dir, dZoom * 2);
+          this.controls.update();
+        }
+      },
+    });
 
+    const urlParams = new URLSearchParams(location.search);
+    const fromTopic = urlParams.get('topic');
+    const fromDept = urlParams.get('dept');
+    const fromSchool = urlParams.get('school');
+    const fromCode = urlParams.get('code');
+    const fromStudent = urlParams.get('student');
+
+    if (fromSchool || fromCode || fromStudent) {
+      const studentPill = document.getElementById('studentPill');
+      if (studentPill) {
+        const sName = fromSchool || "Registered School";
+        const stName = fromStudent || 'Student';
+        const cCode = fromCode ? `Code #${fromCode}` : 'Lab #CSS-042';
+        studentPill.textContent = `🏫 ${sName} · ${stName} · ${cCode}`;
+      }
+      if (fromStudent && fromSchool) {
+        setTimeout(() => {
+          this.say(`Welcome ${fromStudent} to ${fromSchool} [${fromCode || 'Class'}]`, 4);
+        }, 1200);
+      }
+    }
+
+    if (fromDept && (fromDept === 'biology' || fromDept === 'physics' || fromDept === 'supermarket' || fromDept === 'campus')) {
+      this.setDepartment(fromDept, true);
+      if (fromDept === 'biology') {
+        this.loadTopic('biology');
+      } else if (fromDept === 'physics') {
+        this.loadTopic(fromTopic || 'physics');
+      }
+    } else {
+      this.loadTopic(TOPICS.find((tp) => tp.id === fromTopic && tp.ready)?.id ?? TOPICS[0].id);
+    }
+
+    this.setupDoorwayPortals();
+
+
+    window.addEventListener('wheel', (e) => {
+      if (this.activeDept === 'biology' && this.bioLab?.isWhiteboardImgHovered?.()) {
+        e.preventDefault();
+        this.bioLab.handleWheel?.(e.deltaY);
+      }
+    }, { passive: false });
     window.addEventListener('resize', () => this.resize());
     this.resize(true);
     if (matchMedia('(max-width: 720px)').matches) ($('tasks') as HTMLDetailsElement).open = false;
@@ -134,32 +276,108 @@ export class App {
   private loadTopic(id: string) {
     const def = TOPICS.find((tp) => tp.id === id && tp.ready);
     if (!def?.build) return;
+    this.topic = def;
+
+    if (id === 'biology' && this.activeDept !== 'biology') {
+      departmentManager.switchDepartment('biology');
+      this.setDepartment('biology');
+    } else if (id === 'physics' && this.activeDept !== 'physics') {
+      departmentManager.switchDepartment('physics');
+      this.setDepartment('physics');
+    } else if (
+      (id === 'qualitativeAnalysis' ||
+        id === 'indicators' ||
+        id === 'separation' ||
+        id === 'equipment' ||
+        id === 'hydrogen' ||
+        id === 'oxygen') &&
+      this.activeDept !== 'chemistry'
+    ) {
+      departmentManager.switchDepartment('chemistry');
+      this.setDepartment('chemistry');
+    }
+
     this.input.dropAll();
     this.lab?.dispose();
-    this.topic = def;
     this.done = new Set();
     this.hintOpen = false;
     this.stepTime = 0;
     this.nudged = false;
     setActiveTopic(id);
+
+    // Initialize telemetry session for official laboratory practical record
+    const deptTitle = this.activeDept === 'biology' ? 'Department of Biological Sciences'
+      : this.activeDept === 'physics' ? 'Department of Physics & Applied Mechanics'
+      : 'Department of Chemistry & Molecular Sciences';
+    telemetryRecorder.initSession(
+      this.activeDept,
+      def.id,
+      t(def.title),
+      'Chidi Okafor',
+      'CSS-2026-042',
+      deptTitle
+    );
+
     this.lab = new Lab(this.usage, (key) => this.toast(key));
-    this.scene.add(this.lab.root);
-    this.topicUpdate = def.build(this.lab, {
-      done: (step) => this.markDone(step),
-      toast: (key) => this.toast(key),
-    });
+    const activeContainer = this.activeDept === 'chemistry' ? this.chemLabGroup
+      : this.activeDept === 'biology' ? this.bioLab.root
+      : this.physicsLab.root;
+    activeContainer.add(this.lab.root);
+    this.lab.root.position.set(0, 0, 0);
+    this.lab.root.rotation.set(0, 0, 0);
+
+    if (this.activeDept === 'biology' && this.bioLab.console) {
+      this.lab.addPressable(
+        this.bioLab.console.mesh,
+        (uv) => this.bioLab.console.handlePointerDown(uv ?? null),
+        (uv) => this.bioLab.console.handlePointerMove(uv ?? null),
+      );
+      if (this.bioLab.console.keyboardMesh) {
+        this.lab.addPressable(
+          this.bioLab.console.keyboardMesh,
+          (uv) => this.bioLab.console.handleKeyboardPointerDown(uv ?? null),
+          (uv) => this.bioLab.console.handleKeyboardPointerMove(uv ?? null),
+        );
+      }
+      this.lab.addPressable(
+        this.bioLab.centerWbMesh,
+        (uv) => this.bioLab.handleBoardClick(uv ?? null),
+        (uv) => this.bioLab.handleBoardPointerMove?.(uv ?? null),
+      );
+      if (this.bioLab.hologram) {
+        for (const m of this.bioLab.hologram.interactiveMeshes) {
+          this.lab.addPressable(m, () => {
+            this.bioLab.hologram.handlePointerDown(m);
+          });
+        }
+      }
+    }
+    try {
+      this.topicUpdate = def.build(this.lab, {
+        done: (step) => this.markDone(step),
+        toast: (key) => this.toast(key),
+      });
+    } catch (err) {
+      console.error(`[HoloLab] Error building topic ${id}:`, err);
+      this.say(`Error initializing ${id} topic`, 6);
+    }
     // Shadows from the opaque parts only; glass and liquids don't cast them.
     this.lab.group.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       const mat = m.material as THREE.Material;
-      if (!mat.transparent) m.castShadow = true;
+      if (mat && !mat.transparent) m.castShadow = true;
       m.receiveShadow = false;
     });
-    ($('topic') as HTMLSelectElement).value = id;
-    const url = new URL(location.href);
-    url.searchParams.set('topic', id);
-    history.replaceState(null, '', url);
+    const topicSelect = $<HTMLSelectElement>('topic');
+    if (topicSelect && topicSelect.value !== id) topicSelect.value = id;
+    try {
+      const url = new URL(location.href);
+      url.searchParams.set('topic', id);
+      history.replaceState(null, '', url);
+    } catch {
+      /* url update blocked */
+    }
     this.refreshPanel();
   }
 
@@ -170,10 +388,28 @@ export class App {
     this.hintOpen = false;
     this.stepTime = 0;
     this.nudged = false;
-    const all = this.topic.steps?.every((s) => this.done.has(s.id));
+
+    // Record milestone telemetry observation
+    const stepDef = this.topic?.steps?.find((s) => s.id === step);
+    const stepLabel = stepDef ? t(stepDef.key) : step;
+    telemetryRecorder.recordObservation(
+      'Curriculum Milestone',
+      step,
+      `Completed practical objective: ${stepLabel}`,
+      'milestone'
+    );
+
+    const all = this.topic?.steps?.every((s) => this.done.has(s.id));
     // Let the step's own message show first.
     if (all) setTimeout(() => this.toast('ui.allDone', 6), 2500);
     this.refreshPanel();
+
+    // Trigger celebration bounce on completed task
+    const list = $('taskList');
+    const targetLi = list?.querySelector<HTMLElement>(`li[data-step="${step}"]`);
+    if (targetLi) {
+      triggerCelebrationBounce(targetLi);
+    }
   }
 
   private toast(key: Key, seconds = 4) {
@@ -191,6 +427,10 @@ export class App {
     const el = $('toast');
     el.textContent = text;
     el.hidden = false;
+    motionAnimate(el, { opacity: [0, 1], y: [-24, 0], scale: [0.93, 1] }, {
+      stiffness: 480,
+      damping: 22,
+    });
     this.refreshPanel();
   }
 
@@ -203,6 +443,7 @@ export class App {
   }
 
   private refreshPanel() {
+    if (!this.topic) return;
     this.panel.set({
       title: t(this.topic.title),
       steps: (this.topic.steps ?? []).map((s) => ({ text: t(s.key), done: this.done.has(s.id), next: s === this.nextStep() })),
@@ -215,13 +456,14 @@ export class App {
       inXR: this.renderer.xr.isPresenting,
       topics: TOPICS.map((tp) => ({ id: tp.id, title: t(tp.title), ready: tp.ready, current: tp.id === this.topic.id })),
       toast: this.toastTimer > 0 ? this.toastText : '',
+      scientificData: this.topic.getScientificData ? this.topic.getScientificData() : null,
     });
     $('used').textContent = this.usageLines().join(' · ') || t('ui.usedNone');
     this.fillTasks();
   }
 
   private nextStep() {
-    return this.topic.steps?.find((s) => !this.done.has(s.id));
+    return this.topic?.steps?.find((s) => !this.done.has(s.id));
   }
 
   private toggleHint() {
@@ -231,6 +473,7 @@ export class App {
 
   /** The on-screen task list (screens only; in VR the wall board shows it). */
   private fillTasks() {
+    if (!this.topic) return;
     const steps = this.topic.steps ?? [];
     const doneCount = steps.filter((s) => this.done.has(s.id)).length;
     $('taskTitle').textContent = t(this.topic.title);
@@ -240,6 +483,7 @@ export class App {
     const next = steps.find((s) => !this.done.has(s.id));
     for (const s of steps) {
       const li = document.createElement('li');
+      li.setAttribute('data-step', s.id);
       const text = document.createElement('span');
       text.textContent = t(s.key);
       li.appendChild(text);
@@ -252,6 +496,7 @@ export class App {
         btn.textContent = '!';
         btn.title = t('ui.help');
         btn.addEventListener('click', () => this.toggleHint());
+        attachMotionButton(btn);
         li.appendChild(btn);
         if (this.hintOpen) {
           const help = document.createElement('div');
@@ -262,6 +507,7 @@ export class App {
       }
       list.appendChild(li);
     }
+    staggerEntrance(Array.from(list.children) as HTMLElement[], 28);
     $('taskInfo').textContent = this.topic.info ? t(this.topic.info) : '';
   }
 
@@ -271,9 +517,6 @@ export class App {
     else if (id === 'hint') this.toggleHint();
     else if (id === 'rec') this.toggleRecording();
     else if (id === 'reset') this.loadTopic(this.topic.id);
-    else if (id === 'lang') setLang(getLang() === 'en' ? 'uz' : 'en');
-    else if (id === 'langEn') setLang('en');
-    else if (id === 'langUz') setLang('uz');
     else if (id === 'tableDown') this.setTable(BENCH.top - 0.03, true);
     else if (id === 'tableUp') this.setTable(BENCH.top + 0.03, true);
     else if (id === 'exit') void this.renderer.xr.getSession()?.end();
@@ -317,22 +560,15 @@ export class App {
     if (!saved) this.setTable(eyeHeight * 0.57, false);
   }
 
-  private relabel() {
-    for (const l of this.lab.labels) l.redraw();
-    this.input.help.draw();
-    this.input.warning.redraw();
-    redrawLocalized(); // poster, chalkboard, signs
-    this.fillOverlayText();
-    this.refreshPanel();
-  }
-
   // ---- HTML overlay (screens only; in VR the panel does this job) ----
 
   private setupOverlay() {
     const select = $<HTMLSelectElement>('topic');
     select.addEventListener('change', () => this.loadTopic(select.value));
-    $('lang').addEventListener('click', () => setLang(getLang() === 'en' ? 'uz' : 'en'));
-    $('reset').addEventListener('click', () => this.loadTopic(this.topic.id));
+    $('reset').addEventListener('click', () => {
+      this.loadTopic(this.topic.id);
+      this.focusActiveDept();
+    });
     const v360 = $('view360');
     if (v360) v360.addEventListener('click', () => this.toggleView360());
     $('putback').addEventListener('click', () => this.input.putBack());
@@ -345,6 +581,23 @@ export class App {
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) use.addEventListener(ev, () => this.input.useEnd());
     $('vr').addEventListener('click', () => this.enterVR());
     $('rec').addEventListener('click', () => this.toggleRecording());
+    
+    // Hand interaction settings button hooks
+    const btnHand = document.getElementById('btnHandTracking');
+    if (btnHand) {
+      btnHand.addEventListener('click', () => {
+        audio.click();
+        this.handInteraction.toggleSettings();
+      });
+    }
+    const landingBtnHand = document.getElementById('landingBtnHandTracking');
+    if (landingBtnHand) {
+      landingBtnHand.addEventListener('click', () => {
+        audio.click();
+        this.handInteraction.toggleSettings();
+      });
+    }
+
     this.recorder.onSaved = (name) => {
       this.say(t('ui.saved', { name }), 9);
       this.showRecording();
@@ -352,7 +605,7 @@ export class App {
     // Start screen: in VR with a headset, or on this screen with mouse or touch (full screen).
     $('launchBtn').addEventListener('click', () => void this.enterVR());
     $('launchScreen').addEventListener('click', () => this.enterScreen());
-    $('launchLang').addEventListener('click', () => setLang(getLang() === 'en' ? 'uz' : 'en'));
+    this.setupLandingPage();
     // Raise / lower while the button is held down.
     for (const [id, dy] of [['up', 0.012], ['down', -0.012]] as const) {
       const btn = $(id);
@@ -374,11 +627,31 @@ export class App {
       });
     }
     this.fillOverlayText();
+
+    // Attach Framer Motion spring micro-interactions to buttons
+    const interactiveButtons = [
+      $('reset'),
+      $('view360'),
+      $('putback'),
+      $('use'),
+      $('vr'),
+      $('rec'),
+      $('up'),
+      $('down'),
+      $('btnHandTracking'),
+      $('landingBtnHandTracking'),
+      $('launchBtn'),
+      $('launchScreen'),
+      $('btnSupermarket'),
+      $('btnBodyParts'),
+      $('btnReport'),
+    ].filter(Boolean);
+    for (const btn of interactiveButtons) attachMotionButton(btn);
   }
 
-  private readonly storeService = new SupermarketService();
-  private readonly studentId = 'usr_chidi_042';
-  private readonly schoolId = 'sch_kings_college';
+  public readonly storeService = new SupermarketService();
+  public readonly studentId = 'usr_chidi_042';
+  public readonly schoolId = 'sch_kings_college';
 
   private setupSchoolPlatformUI() {
     // 1. Department workspace selector
@@ -388,135 +661,160 @@ export class App {
         <option value="chemistry">${t('ui.dept.chemistry')}</option>
         <option value="biology">${t('ui.dept.biology')}</option>
         <option value="physics">${t('ui.dept.physics')}</option>
+        <option value="supermarket">🛒 Science Supermarket</option>
+        <option value="campus">${t('ui.dept.campus')}</option>
       `;
-      deptSelect.value = departmentManager.activeDepartment;
+      deptSelect.value = this.activeDept;
       deptSelect.addEventListener('change', () => {
-        const nextDept = deptSelect.value as Department;
+        const nextDept = deptSelect.value as Department | 'campus' | 'supermarket';
+        if (nextDept === 'campus') {
+          this.setDepartment('campus');
+          audio.click();
+          return;
+        }
+        if (nextDept === 'supermarket') {
+          this.setDepartment('supermarket');
+          audio.click();
+          return;
+        }
         departmentManager.switchDepartment(nextDept);
+        this.setDepartment(nextDept);
         audio.click();
-        const conf = DEPARTMENTS[nextDept];
-        this.say(`Switched to ${conf.title} (${conf.code})`, 4);
+        if (nextDept === 'biology' && this.topic?.id !== 'biology') {
+          this.loadTopic('biology');
+        } else if (nextDept === 'physics' && this.topic?.id !== 'physics') {
+          this.loadTopic('physics');
+        } else if (nextDept === 'chemistry' && (this.topic?.id === 'biology' || this.topic?.id === 'physics')) {
+          this.loadTopic('qualitativeAnalysis');
+        }
       });
     }
 
-    // 2. Supermarket Modal
+    // 2. Supermarket: Teleport directly into the 3D Supermarket Building
     const btnStore = $('btnSupermarket');
-    const storeModal = $('supermarketModal');
-    const closeStore = $('closeSupermarket');
-    const tabCatalog = $('tabCatalog');
-    const tabInventory = $('tabInventory');
-    const catalogContent = $('catalogContent');
-    const inventoryContent = $('inventoryContent');
-
-    const renderStore = () => {
-      const productList = $('productList');
-      if (!productList) return;
-      productList.innerHTML = '';
-      const products = this.storeService.listProducts();
-      for (const p of products) {
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        const priceNaira = (Number(p.priceMinor) / 100).toLocaleString();
-        card.innerHTML = `
-          <div>
-            <div class="product-sku">${p.sku} · ${p.department.toUpperCase()}</div>
-            <h4>${p.name}</h4>
-            <p class="product-desc">${p.description}</p>
-          </div>
-          <div class="product-footer">
-            <span class="product-price">₦${priceNaira}</span>
-            <span class="product-type">${p.productType.replace('_', ' ')}</span>
-          </div>
-          <button class="primary buy-btn" style="width:100%; margin-top:8px;">Pay with Paystack (₦${priceNaira})</button>
-        `;
-        card.querySelector('.buy-btn')?.addEventListener('click', async () => {
-          audio.click();
-          const idempotencyKey = `idem_${Date.now()}_${Math.random()}`;
-          const order = await this.storeService.createOrder({
-            studentId: this.studentId,
-            schoolId: this.schoolId,
-            idempotencyKey,
-            items: [{ productId: p.id, quantity: 1 }],
-          });
-          await this.storeService.settleOrderPayment({
-            orderId: order.id,
-            provider: 'paystack',
-            providerReference: `pstk_${Date.now()}`,
-            amountMinor: order.totalMinor,
-            webhookEventId: `evt_${Date.now()}`,
-          });
-          audio.clink();
-          this.say(t('ui.checkoutSuccess'), 5);
-          renderInventory();
-        });
-        productList.appendChild(card);
-      }
-    };
-
-    const renderInventory = () => {
-      const invList = $('inventoryList');
-      if (!invList) return;
-      invList.innerHTML = '';
-      const items = this.storeService.getStudentInventory(this.studentId);
-      if (items.length === 0) {
-        invList.innerHTML = '<p style="color:var(--muted); grid-column:1/-1;">No items purchased yet. Browse the catalogue to order virtual equipment.</p>';
-        return;
-      }
-      for (const item of items) {
-        const card = document.createElement('div');
-        card.className = 'inventory-card';
-        card.innerHTML = `
-          <h4>${item.productName}</h4>
-          <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">${item.department} · ${item.productType}</div>
-          <div class="qty" style="margin-top:8px;">${item.quantity} ${item.productType === 'consumable_reagent' ? 'mL' : 'units'}</div>
-        `;
-        invList.appendChild(card);
-      }
-    };
-
-    if (btnStore && storeModal) {
+    if (btnStore) {
       btnStore.addEventListener('click', () => {
         audio.click();
-        storeModal.hidden = false;
-        renderStore();
-      });
-      closeStore?.addEventListener('click', () => {
-        storeModal.hidden = true;
-      });
-      tabCatalog?.addEventListener('click', () => {
-        tabCatalog.classList.add('active');
-        tabInventory?.classList.remove('active');
-        if (catalogContent) catalogContent.hidden = false;
-        if (inventoryContent) inventoryContent.hidden = true;
-        renderStore();
-      });
-      tabInventory?.addEventListener('click', () => {
-        tabInventory.classList.add('active');
-        tabCatalog?.classList.remove('active');
-        if (catalogContent) catalogContent.hidden = true;
-        if (inventoryContent) inventoryContent.hidden = false;
-        renderInventory();
+        this.setDepartment('supermarket');
       });
     }
 
-    // 3. Report Modal
+    // Biology Desktop View Tab
+    const btnBodyParts = $('btnBodyParts');
+    if (btnBodyParts) {
+      btnBodyParts.addEventListener('click', () => {
+        audio.click();
+        this.desktopBioConsole.toggleModal();
+      });
+    }
+
+    // 3. Certified Scientific Practical Report Modal
     const btnReport = $('btnReport');
     const reportModal = $('reportModal');
     const closeReport = $('closeReport');
     const btnSubmitReport = $('btnSubmitReport');
+    const btnDownloadPdf = $('btnDownloadPdf');
+    const btnPrintReport = $('btnPrintReport');
 
     if (btnReport && reportModal) {
-      btnReport.addEventListener('click', () => {
-        audio.click();
+      const updateReportModal = () => {
+        const session = telemetryRecorder.getSession();
+
+        const studentName = $('reportStudentName');
+        if (studentName) studentName.textContent = session.studentName;
+
         const topicName = $('reportTopicName');
         if (topicName && this.topic) topicName.textContent = t(this.topic.title);
+
+        const deptName = $('reportDeptName');
+        if (deptName) deptName.textContent = `${session.department.toUpperCase()} LAB · ROOM 201`;
+
+        const sessionId = $('reportSessionId');
+        if (sessionId) sessionId.textContent = session.sessionId;
+
+        const grade = $('reportGrade');
+        if (grade) {
+          const totalSteps = Math.max(1, this.topic?.steps?.length || 1);
+          const pct = Math.round((this.done.size / totalSteps) * 100);
+          grade.textContent = pct >= 80 ? 'Distinction (A1)' : pct >= 60 ? 'Credit (C4)' : 'In Progress';
+          grade.style.color = pct >= 80 ? '#34d399' : pct >= 60 ? '#facc15' : '#38bdf8';
+        }
+
+        const obsCount = $('reportObsCount');
+        if (obsCount) obsCount.textContent = `${session.observations.length} verified entries`;
+
+        // Render telemetry table
+        const tbody = $('reportTelemetryBody');
+        if (tbody) {
+          if (session.observations.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:14px;">No observations recorded yet. Interact with the practical apparatus to record telemetry.</td></tr>`;
+          } else {
+            tbody.innerHTML = session.observations.map((obs) => `
+              <tr>
+                <td style="color:#94a3b8;font-family:monospace;white-space:nowrap;">${obs.timestamp}</td>
+                <td style="font-weight:600;color:#f8fafc;">${obs.sensorType}</td>
+                <td style="color:#38bdf8;font-weight:600;">${obs.parameter}</td>
+                <td>${obs.value}</td>
+                <td><span class="badge ${obs.status}">${obs.status.toUpperCase()}</span></td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // Render reagents/equipment usage
+        const usageBox = $('reportUsage');
+        if (usageBox) {
+          if (session.reagentsUsed.length === 0) {
+            usageBox.innerHTML = `<span style="color:#64748b;">No reagents or equipment registered yet in this session.</span>`;
+          } else {
+            usageBox.innerHTML = `
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                ${session.reagentsUsed.map((r) => `
+                  <div style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);">
+                    <strong style="color:#f8fafc;">${r.name}:</strong> <span style="color:#38bdf8;">${r.amount} ${r.unit}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+        }
+
+        // Digital signature hash
+        const sigHash = $('reportSigHash');
+        if (sigHash) sigHash.textContent = session.verificationHash;
+
+        // Render QR Code to Canvas
+        const qrCanvas = document.getElementById('reportQrCanvas') as HTMLCanvasElement;
+        if (qrCanvas) {
+          QRCodeGenerator.renderToCanvas(session.verificationUrl, qrCanvas, 100);
+        }
+      };
+
+      btnReport.addEventListener('click', () => {
+        audio.click();
+        updateReportModal();
         reportModal.hidden = false;
       });
+
       closeReport?.addEventListener('click', () => {
         reportModal.hidden = true;
       });
+
+      btnDownloadPdf?.addEventListener('click', () => {
+        audio.click();
+        const session = telemetryRecorder.getSession();
+        PDFReportGenerator.downloadReport(session);
+        this.say('Official Signed Practical PDF Report Downloaded!', 4);
+      });
+
+      btnPrintReport?.addEventListener('click', () => {
+        audio.click();
+        window.print();
+      });
+
       btnSubmitReport?.addEventListener('click', () => {
         audio.clink();
+        telemetryRecorder.completeSession();
         this.say(t('ui.reportSubmitted'), 6);
         reportModal.hidden = true;
       });
@@ -552,40 +850,188 @@ export class App {
     this.showHolding(this.input?.heldPointer ?? null);
   }
 
-  private toggleView360() {
-    audio.click();
-    if (this.viewMode === 'bench') {
-      this.viewMode = 'class360';
-      this.controls.target.set(0, 1.25, 0.4);
-      this.camera.position.set(0, 1.55, 1.6);
-      this.controls.minDistance = 0.1;
-      this.controls.maxDistance = 5.5;
-      this.say(t('ui.view360Active'), 4);
+  private focusActiveDept() {
+    if (this.activeDept === 'campus') {
+      this.controls.target.set(0, 1.5, 4);
+      this.camera.position.set(0, 5.0, 17);
+      this.controls.minDistance = 0.5;
+      this.controls.maxDistance = 50;
+    } else if (this.activeDept === 'supermarket') {
+      const activeContainer = this.supermarketBuilding.root;
+      activeContainer.updateMatrixWorld(true);
+      const tgtLocal = new THREE.Vector3(0, 1.35, -0.2);
+      const camLocal = new THREE.Vector3(0, 1.65, 3.8);
+      this.controls.minDistance = 0.2;
+      this.controls.maxDistance = 14.0;
+      this.controls.target.copy(activeContainer.localToWorld(tgtLocal));
+      this.camera.position.copy(activeContainer.localToWorld(camLocal));
     } else {
-      this.viewMode = 'bench';
-      this.controls.target.set(-0.02, BENCH.top + 0.06, BENCH.z - 0.08);
-      this.camera.position.set(-0.02, BENCH.top + 0.48, BENCH.z + 0.58);
-      this.controls.minDistance = 0.15;
-      this.controls.maxDistance = 2.6;
-      this.say(t('ui.viewBenchActive'), 4);
+      const activeContainer = this.activeDept === 'chemistry' ? this.chemLabGroup
+        : this.activeDept === 'biology' ? this.bioLab.root
+        : this.physicsLab.root;
+
+      activeContainer.updateMatrixWorld(true);
+
+      const tgtLocal = new THREE.Vector3();
+      const camLocal = new THREE.Vector3();
+
+      if (this.viewMode === 'firstPerson') {
+        tgtLocal.set(0, BENCH.top + 0.12, -0.65);
+        camLocal.set(0, BENCH.top + 0.52, 0.22);
+        this.controls.minDistance = 0.15;
+        this.controls.maxDistance = 50.0;
+      } else {
+        // 360-degree full classroom view
+        tgtLocal.set(0, 1.25, -0.3);
+        camLocal.set(0, 1.65, 2.2);
+        this.controls.minDistance = 0.2;
+        this.controls.maxDistance = 50.0;
+      }
+
+      this.controls.target.copy(activeContainer.localToWorld(tgtLocal));
+      this.camera.position.copy(activeContainer.localToWorld(camLocal));
     }
     this.controls.update();
+  }
+
+  setDepartment(dept: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket', teleport = true) {
+    this.activeDept = dept;
+    this.lastZone = dept;
+
+    // All buildings and campus grounds exist simultaneously in the 3D school environment
+    this.chemLabGroup.visible = true;
+    this.bioLab.root.visible = true;
+    this.physicsLab.root.visible = true;
+    this.campusSchool.root.visible = true;
+    this.supermarketBuilding.root.visible = true;
+
+    const deptSelect = $<HTMLSelectElement>('dept');
+    if (deptSelect && deptSelect.value !== dept) deptSelect.value = dept;
+
+    const btnBodyParts = $('btnBodyParts');
+    if (btnBodyParts) {
+      btnBodyParts.style.display = dept === 'biology' ? 'inline-block' : 'none';
+    }
+    this.desktopBioConsole.setVisible(dept === 'biology');
+
+    if (dept === 'campus') {
+      if (teleport) this.focusActiveDept();
+      this.say('HoloLab Science Campus Quadrangle: Chemistry (North), Biology (West), Physics (East), Supermarket (South-East)', 5);
+    } else if (dept === 'supermarket') {
+      if (teleport) this.focusActiveDept();
+      this.say('HoloLab Science Supermarket: Equipment, Glassware & Practical Kits Store', 5);
+    } else {
+      // Determine the active building container
+      const activeContainer = dept === 'chemistry' ? this.chemLabGroup
+        : dept === 'biology' ? this.bioLab.root
+        : this.physicsLab.root;
+
+      // Attach interactive apparatus & task panel to the active building
+      if (this.lab) {
+        activeContainer.add(this.lab.root);
+        this.lab.root.position.set(0, 0, 0);
+        this.lab.root.rotation.set(0, 0, 0);
+        if (dept === 'biology' && this.bioLab.console) {
+          this.lab.addPressable(
+            this.bioLab.console.mesh,
+            (uv) => this.bioLab.console.handlePointerDown(uv ?? null),
+            (uv) => this.bioLab.console.handlePointerMove(uv ?? null),
+          );
+          if (this.bioLab.console.keyboardMesh) {
+            this.lab.addPressable(
+              this.bioLab.console.keyboardMesh,
+              (uv) => this.bioLab.console.handleKeyboardPointerDown(uv ?? null),
+              (uv) => this.bioLab.console.handleKeyboardPointerMove(uv ?? null),
+            );
+          }
+          this.lab.addPressable(
+            this.bioLab.centerWbMesh,
+            (uv) => this.bioLab.handleBoardClick(uv ?? null),
+            (uv) => this.bioLab.handleBoardPointerMove?.(uv ?? null),
+          );
+          if (this.bioLab.hologram) {
+            for (const m of this.bioLab.hologram.interactiveMeshes) {
+              this.lab.addPressable(m, () => {
+                this.bioLab.hologram.handlePointerDown(m);
+              });
+            }
+          }
+        }
+      }
+
+      activeContainer.add(this.panel.mesh);
+      this.panel.mesh.position.set(0, 1.84, -1.552);
+      this.panel.mesh.visible = dept !== 'biology';
+
+      if (teleport) {
+        this.focusActiveDept();
+      }
+
+      const deptConf = DEPARTMENTS[dept];
+      if (deptConf) {
+        this.say(`Entered ${deptConf.title} (${deptConf.code})`, 4);
+      }
+    }
+  }
+
+  private toggleView360() {
+    audio.click();
+    if (this.viewMode === 'firstPerson') {
+      this.viewMode = 'class360';
+      this.focusActiveDept();
+      this.say(t('ui.view360Active'), 4);
+    } else {
+      this.viewMode = 'firstPerson';
+      this.focusActiveDept();
+      this.say(t('ui.viewFirstActive'), 4);
+    }
     this.updateViewButton();
   }
 
   private updateViewButton() {
     const btn = $<HTMLButtonElement>('view360');
     if (btn) {
-      btn.textContent = this.viewMode === 'bench' ? t('ui.view360') : t('ui.viewBench');
-      btn.classList.toggle('primary', this.viewMode === 'class360');
+      if (this.viewMode === 'firstPerson') {
+        btn.textContent = t('ui.view360');
+        btn.classList.remove('primary');
+      } else {
+        btn.textContent = t('ui.viewFirst');
+        btn.classList.add('primary');
+      }
     }
   }
 
   private showHolding(tool: Tool | null) {
     const bar = $('hold');
-    bar.hidden = !tool;
-    if (!tool) return;
-    $('holdName').textContent = t('ui.holding', { name: tool.name() });
+    if (!tool) {
+      if (!bar.hidden) {
+        motionAnimate(bar, { opacity: [1, 0], y: [0, 24], scale: [1, 0.94] }, {
+          stiffness: 400,
+          damping: 25,
+          onComplete: () => {
+            bar.hidden = true;
+          },
+        });
+      }
+      return;
+    }
+    const wasHidden = bar.hidden;
+    bar.hidden = false;
+    if (wasHidden) {
+      motionAnimate(bar, { opacity: [0, 1], y: [24, 0], scale: [0.94, 1] }, {
+        stiffness: 460,
+        damping: 22,
+      });
+    }
+    let title = t('ui.holding', { name: tool.name() });
+    if (tool.use === 'drip') {
+      const left = tool.dropperDropsLeft;
+      const max = tool.dropperMaxDrops;
+      title += ` (${left}/${max} drops)`;
+    } else if (tool.capMesh) {
+      title += ' (Cap Open · Ready to Pour)';
+    }
+    $('holdName').textContent = title;
     const use = $('use');
     use.hidden = tool.use === 'none';
     use.textContent = tool.use === 'drip' ? t('ui.use.drip') : t('ui.use.pour');
@@ -598,6 +1044,96 @@ export class App {
     const el = document.documentElement;
     if (!document.fullscreenElement && el.requestFullscreen) void el.requestFullscreen().catch(() => {});
     this.resize(true);
+  }
+
+  private setupLandingPage() {
+    const enterWithDept = (dept: 'chemistry' | 'biology' | 'physics' | 'campus') => {
+      this.setDepartment(dept, true);
+      if (dept === 'chemistry') {
+        this.loadTopic('qualitativeAnalysis');
+      }
+      this.enterScreen();
+    };
+
+    $('launchChem')?.addEventListener('click', () => enterWithDept('chemistry'));
+    $('launchBio')?.addEventListener('click', () => enterWithDept('biology'));
+    $('launchPhysio')?.addEventListener('click', () => enterWithDept('biology'));
+    $('btnHome')?.addEventListener('click', () => {
+      $('launch').hidden = false;
+    });
+
+    const slides = [
+      {
+        badge: 'CHEMISTRY LABORATORY · ROOM 304',
+        title: 'Volumetric Molecular Synthesis & Reactions',
+        desc: 'Perform acid-base neutralisation, gas evolution, and inspect molecular lattices with Beer-Lambert optical transmission.',
+        dept: 'chemistry' as const,
+      },
+      {
+        badge: 'BIOLOGY LABORATORY · ROOM 204',
+        title: 'Full-Body Musculoskeletal Anatomy Hologram',
+        desc: 'Inspect 30 segmented anatomical structures, bones, muscle groups, and live spatial callout pins in 3D.',
+        dept: 'biology' as const,
+      },
+      {
+        badge: 'MEDICAL WORKBENCH · PHYSIOLOGY',
+        title: 'Cardiovascular Electrophysiology & Receptors',
+        desc: 'Monitor 4-phase Wiggers diagrams, ECG telemetry, heart valve sounds, and autonomic pharmacological regulation.',
+        dept: 'biology' as const,
+      },
+    ];
+
+    let currentSlide = 0;
+    const tabBtns = document.querySelectorAll<HTMLButtonElement>('.showcase-tab');
+    const imgEls = document.querySelectorAll<HTMLImageElement>('.showcase-img');
+    const badgeEl = document.getElementById('slideBadge');
+    const titleEl = document.getElementById('slideTitle');
+    const descEl = document.getElementById('slideDesc');
+    const slideBtn = document.getElementById('slideBtn');
+
+    const updateSlide = (idx: number) => {
+      currentSlide = idx % slides.length;
+      tabBtns.forEach((btn, i) => btn.classList.toggle('active', i === currentSlide));
+      imgEls.forEach((img, i) => img.classList.toggle('active', i === currentSlide));
+      const s = slides[currentSlide];
+      if (badgeEl) badgeEl.textContent = s.badge;
+      if (titleEl) titleEl.textContent = s.title;
+      if (descEl) descEl.textContent = s.desc;
+    };
+
+    tabBtns.forEach((btn, idx) => {
+      btn.addEventListener('click', () => {
+        updateSlide(idx);
+      });
+    });
+
+    slideBtn?.addEventListener('click', () => {
+      enterWithDept(slides[currentSlide].dept);
+    });
+
+    let autoTimer = window.setInterval(() => {
+      if (!$('launch').hidden) {
+        updateSlide(currentSlide + 1);
+      }
+    }, 6000);
+
+    const showcaseEl = document.querySelector('.hero-showcase');
+    showcaseEl?.addEventListener('mouseenter', () => clearInterval(autoTimer));
+    showcaseEl?.addEventListener('mouseleave', () => {
+      clearInterval(autoTimer);
+      autoTimer = window.setInterval(() => {
+        if (!$('launch').hidden) updateSlide(currentSlide + 1);
+      }, 6000);
+    });
+
+    // Attach Framer Motion 3D gyro parallax tilt to showcase and cards
+    document.querySelectorAll<HTMLElement>('.hero-showcase, .module-card, .stat-item, .school-card').forEach((card) => {
+      attachMotionTilt(card, 6, true);
+    });
+
+    document.querySelectorAll<HTMLElement>('.hero-btn, .showcase-quick-btn').forEach((btn) => {
+      attachMotionButton(btn);
+    });
   }
 
   private async enterVR() {
@@ -652,29 +1188,39 @@ export class App {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
     if (first) {
-      // Back off far enough that the whole bench fits the width of the screen.
-      const half = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-      // Where a student's eyes would be, standing at the bench; narrow screens step back until
-      // the whole bench fits.
-      const dist = Math.max(1.0, 0.86 / (half * this.camera.aspect));
-      const tgt = this.controls.target;
-      const elev = 0.6;
-      this.camera.position.set(tgt.x, tgt.y + Math.sin(elev) * Math.min(dist, 1.6), tgt.z + Math.cos(elev) * dist);
-      this.controls.update();
+      this.focusActiveDept();
     }
   }
 
   private frame() {
     const dt = Math.min(0.05, this.clock.getDelta());
     if (!this.renderer.xr.isPresenting) {
-      this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, ROOM.left + 0.15, ROOM.right - 0.15);
-      this.camera.position.y = THREE.MathUtils.clamp(this.camera.position.y, 0.2, ROOM.height - 0.1);
-      this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, ROOM.back + 0.15, ROOM.front - 0.15);
-      this.controls.update();
+      if (
+        !Number.isFinite(this.camera.position.x) ||
+        !Number.isFinite(this.camera.position.y) ||
+        !Number.isFinite(this.camera.position.z) ||
+        !Number.isFinite(this.controls.target.x) ||
+        !Number.isFinite(this.controls.target.y) ||
+        !Number.isFinite(this.controls.target.z)
+      ) {
+        this.focusActiveDept();
+      } else {
+        // Clamp within the overarching campus bounds (70m x 70m)
+        this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, -34, 34);
+        this.camera.position.y = THREE.MathUtils.clamp(this.camera.position.y, 0.2, 14);
+        this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, -34, 34);
+        this.controls.update();
+      }
     }
     this.input.update(dt);
+    this.updateSpatialZone(dt);
     this.lab.update(dt);
     this.topicUpdate(dt);
+    this.chemRoomUpdate?.(dt);
+    this.bioLab.update(dt, this.camera);
+    this.physicsLab.update(dt);
+    this.campusSchool.update(dt);
+    this.supermarketBuilding.update(dt);
     this.tag.update(this.input.focus(), dt, this.renderer.xr.isPresenting ? 1.3 : 1);
 
     // Offer step-by-step help to anyone who has been on the same task for a while.
@@ -686,7 +1232,14 @@ export class App {
     if (this.toastTimer > 0) {
       this.toastTimer -= dt;
       if (this.toastTimer <= 0) {
-        $('toast').hidden = true;
+        const el = $('toast');
+        motionAnimate(el, { opacity: [1, 0], y: [0, -18], scale: [1, 0.95] }, {
+          stiffness: 350,
+          damping: 24,
+          onComplete: () => {
+            el.hidden = true;
+          },
+        });
         this.refreshPanel();
       }
     }
@@ -730,5 +1283,235 @@ export class App {
     btn.classList.toggle('recording', on);
     btn.textContent = on ? `■ ${t('ui.stopRec')} 00:00` : `● ${t('ui.record')}`;
     if (this.topic) this.refreshPanel();
+  }
+
+  // --- Spatial Campus Navigation & Zone Detection ---
+  private lastZone: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket' = 'chemistry';
+  private zoneCheckCooldown = 0;
+  private portalWaypoints: {
+    mesh: THREE.Object3D;
+    targetCam: THREE.Vector3;
+    targetLook: THREE.Vector3;
+    destDept: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket';
+  }[] = [];
+
+  private updateSpatialZone(dt: number) {
+    this.zoneCheckCooldown -= dt;
+    if (this.zoneCheckCooldown > 0) return;
+    this.zoneCheckCooldown = 0.2; // Check zone 5 times per second
+
+    const playerPos = new THREE.Vector3();
+    this.camera.getWorldPosition(playerPos);
+
+    let currentZone: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket' = 'campus';
+
+    // Chemistry building is at (0, 0, -16); room is bounded by Z: [-21, -11.8], X: [-5.4, 5.4]
+    if (playerPos.z < -11.8 && Math.abs(playerPos.x) < 5.4) {
+      currentZone = 'chemistry';
+    }
+    // Biology pavilion is at (-22, 0, 4); room is bounded by X: [-27, -17.2], Z: [-1, 9]
+    else if (playerPos.x < -17.2 && Math.abs(playerPos.z - 4.0) < 5.4) {
+      currentZone = 'biology';
+    }
+    // Physics institute is at (22, 0, 4); room is bounded by X: [17.2, 27], Z: [-1, 9]
+    else if (playerPos.x > 17.2 && Math.abs(playerPos.z - 4.0) < 5.4) {
+      currentZone = 'physics';
+    }
+    // Science supermarket is at South-East: X > 13.5, Z > 13.5
+    else if (playerPos.x > 13.5 && playerPos.z > 13.5) {
+      currentZone = 'supermarket';
+    }
+    // All other areas are the central school environment garden and quadrangle
+    else {
+      currentZone = 'campus';
+    }
+
+    if (currentZone !== this.lastZone) {
+      const prev = this.lastZone;
+      this.lastZone = currentZone;
+      this.onZoneChanged(currentZone, prev);
+    }
+  }
+
+  private onZoneChanged(newZone: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket', _prevZone: string) {
+    if (newZone === 'chemistry') {
+      this.setDepartment('chemistry', false);
+      if (this.topic?.id !== 'qualitativeAnalysis' && this.topic?.id !== 'indicators' && this.topic?.id !== 'hydrogen' && this.topic?.id !== 'oxygen') {
+        this.loadTopic('qualitativeAnalysis');
+      }
+      this.say('Entered Chemistry Laboratory (Hall 304)', 3);
+      audio.click();
+    } else if (newZone === 'biology') {
+      this.setDepartment('biology', false);
+      if (this.topic?.id !== 'biology') {
+        this.loadTopic('biology');
+      }
+      this.say('Entered Biology Pavilion (Hall 201)', 3);
+      audio.click();
+    } else if (newZone === 'physics') {
+      this.setDepartment('physics', false);
+      if (this.topic?.id !== 'physics') {
+        this.loadTopic('physics');
+      }
+      this.say('Entered Physics Institute (Hall 101)', 3);
+      audio.click();
+    } else if (newZone === 'supermarket') {
+      this.setDepartment('supermarket', false);
+      this.say('Entered Campus Supermarket Store', 3);
+      audio.click();
+    } else {
+      this.setDepartment('campus', false);
+      this.say('Stepped out into Campus Garden Quadrangle', 3);
+      audio.click();
+    }
+  }
+
+  private setupDoorwayPortals() {
+    const portalGroup = new THREE.Group();
+    portalGroup.name = 'CampusDoorwayPortals';
+    this.scene.add(portalGroup);
+
+    const createThresholdPortal = (
+      x: number,
+      y: number,
+      z: number,
+      rotY: number,
+      label: string,
+      color: number,
+      targetCam: THREE.Vector3,
+      targetLook: THREE.Vector3,
+      destDept: 'chemistry' | 'biology' | 'physics' | 'campus' | 'supermarket',
+    ) => {
+      const g = new THREE.Group();
+      g.position.set(x, y, z);
+      g.rotation.y = rotY;
+
+      // Illuminated floor threshold strip
+      const stripGeo = new THREE.PlaneGeometry(2.4, 0.45);
+      stripGeo.rotateX(-Math.PI / 2);
+      const tex = canvasTexture(512, 128, (c, w, h) => {
+        c.fillStyle = '#0f172a';
+        c.fillRect(0, 0, w, h);
+        c.strokeStyle = '#38bdf8';
+        c.lineWidth = 6;
+        c.strokeRect(4, 4, w - 8, h - 8);
+
+        c.fillStyle = '#f8fafc';
+        c.font = 'bold 36px sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(label, w / 2, h / 2);
+      });
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.92,
+      });
+      const mesh = new THREE.Mesh(stripGeo, mat);
+      g.add(mesh);
+
+      // Subtle glow ring
+      const ringGeo = new THREE.RingGeometry(0.7, 0.95, 24);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = 0.005;
+      g.add(ring);
+
+      portalGroup.add(g);
+      this.portalWaypoints.push({ mesh: g, targetCam, targetLook, destDept });
+    };
+
+    // 1. Chemistry North Entrance
+    createThresholdPortal(
+      0, 0.05, -11.0, 0,
+      '▲ ENTER CHEMISTRY LAB', 0x38bdf8,
+      new THREE.Vector3(0, 1.6, -14.8), new THREE.Vector3(0, 1.2, -17.5),
+      'chemistry',
+    );
+    createThresholdPortal(
+      0, 0.05, -12.4, Math.PI,
+      '▼ EXIT TO CAMPUS GARDEN', 0x4ade80,
+      new THREE.Vector3(0, 1.6, -9.2), new THREE.Vector3(0, 1.5, 4.0),
+      'campus',
+    );
+
+    // 2. Biology West Entrance
+    createThresholdPortal(
+      -16.6, 0.05, 4.0, Math.PI / 2,
+      '▲ ENTER BIOLOGY LAB', 0x4ade80,
+      new THREE.Vector3(-19.5, 1.6, 4.0), new THREE.Vector3(-23.0, 1.2, 4.0),
+      'biology',
+    );
+    createThresholdPortal(
+      -18.4, 0.05, 4.0, -Math.PI / 2,
+      '▼ EXIT TO CAMPUS GARDEN', 0x38bdf8,
+      new THREE.Vector3(-14.8, 1.6, 4.0), new THREE.Vector3(0, 1.5, 4.0),
+      'campus',
+    );
+
+    // 3. Physics East Entrance
+    createThresholdPortal(
+      16.6, 0.05, 4.0, -Math.PI / 2,
+      '▲ ENTER PHYSICS LAB', 0xfbbf24,
+      new THREE.Vector3(19.5, 1.6, 4.0), new THREE.Vector3(23.0, 1.2, 4.0),
+      'physics',
+    );
+    createThresholdPortal(
+      18.4, 0.05, 4.0, Math.PI / 2,
+      '▼ EXIT TO CAMPUS GARDEN', 0x4ade80,
+      new THREE.Vector3(14.8, 1.6, 4.0), new THREE.Vector3(0, 1.5, 4.0),
+      'campus',
+    );
+
+    // Click threshold to smoothly walk through doorway
+    window.addEventListener('pointerdown', (e) => {
+      if (this.input?.heldPointer) return;
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1,
+      );
+      raycaster.setFromCamera(mouse, this.camera);
+      if (this.activeDept === 'biology' && this.bioLab.hologram) {
+        const hits = raycaster.intersectObjects(this.bioLab.hologram.interactiveMeshes, true);
+        if (hits.length > 0 && hits[0].distance < 14) {
+          this.bioLab.hologram.handlePointerDown(hits[0].object);
+          return;
+        }
+      }
+      for (const pw of this.portalWaypoints) {
+        const hits = raycaster.intersectObjects(pw.mesh.children, true);
+        if (hits.length > 0 && hits[0].distance < 18) {
+          this.smoothWalkTo(pw.targetCam, pw.targetLook);
+          break;
+        }
+      }
+    });
+  }
+
+  private smoothWalkTo(targetCam: THREE.Vector3, targetLook: THREE.Vector3) {
+    const startCam = this.camera.position.clone();
+    const startTarget = this.controls.target.clone();
+    let tProgress = 0;
+    const step = () => {
+      tProgress += 0.06;
+      if (tProgress >= 1.0) {
+        this.camera.position.copy(targetCam);
+        this.controls.target.copy(targetLook);
+        this.controls.update();
+        return;
+      }
+      this.camera.position.lerpVectors(startCam, targetCam, tProgress);
+      this.controls.target.lerpVectors(startTarget, targetLook, tProgress);
+      this.controls.update();
+      requestAnimationFrame(step);
+    };
+    step();
   }
 }

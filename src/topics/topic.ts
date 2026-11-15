@@ -1,5 +1,6 @@
 import type { Lab } from '../core/lab';
 import type { Key } from '../i18n';
+import type { ScientificData } from '../core/panel';
 
 export interface TopicApi {
   /** Tick a task off (once). */
@@ -17,4 +18,6 @@ export interface TopicDef {
   steps?: { id: string; key: Key; hint: Key }[];
   /** Lays out the bench and returns the per-frame update for this topic's chemistry. */
   build?: (lab: Lab, api: TopicApi) => (dt: number) => void;
+  /** Returns real-time scientific data (equation, observation, explanation) for the smart board. */
+  getScientificData?: () => ScientificData | null;
 }

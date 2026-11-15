@@ -28,6 +28,14 @@ export class Tool {
   solid?: { part: Mixture; color: number; size: number; perSecond: number; unit: 'pieces' | 'spoons' };
   /** One drop from a dropper. */
   drop?: { part: Mixture; color: number };
+  /** Dropper pipette capacity & visual liquid mesh */
+  dropperFillMesh?: THREE.Mesh;
+  dropperMaxDrops = 30;
+  dropperDropsLeft = 30;
+  /** Currently aligned vessel under this tool */
+  hoveredVessel: Vessel | null = null;
+  /** Removable screw cap for chemical reagent bottles */
+  capMesh?: THREE.Mesh;
   /** Second line of the floating name tag (concentration, volume, reading). */
   detail?: () => string;
   /** The most it can pour, in mL per second (a narrow neck limits a bottle). */
@@ -67,5 +75,29 @@ export class Tool {
   tiltAngle() {
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.root.getWorldQuaternion(new THREE.Quaternion()));
     return Math.acos(THREE.MathUtils.clamp(up.y, -1, 1));
+  }
+
+  refillDropper() {
+    this.dropperDropsLeft = this.dropperMaxDrops;
+    if (this.dropperFillMesh) {
+      this.dropperFillMesh.scale.set(1.0, 1.0, 1.0);
+      this.dropperFillMesh.position.y = 0.031;
+      this.dropperFillMesh.visible = true;
+    }
+  }
+
+  dispenseDrop(): boolean {
+    if (this.dropperDropsLeft <= 0) {
+      this.dropperDropsLeft = this.dropperMaxDrops;
+    }
+    this.dropperDropsLeft--;
+    if (this.dropperFillMesh) {
+      const ratio = Math.max(0.01, this.dropperDropsLeft / this.dropperMaxDrops);
+      const radScale = Math.min(1.0, 0.45 + 0.55 * Math.sqrt(ratio));
+      this.dropperFillMesh.scale.set(radScale, ratio, radScale);
+      this.dropperFillMesh.position.y = 0.002 + 0.029 * ratio;
+      this.dropperFillMesh.visible = this.dropperDropsLeft > 0;
+    }
+    return true;
   }
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { addTo, scaled, type Mixture } from '../chem/mixture';
+import { addTo, emptyMix, scaled, type Mixture } from '../chem/mixture';
 import type { Key } from '../i18n';
 import { audio } from './audio';
 import { Flame, Flash } from './fx';
@@ -104,7 +104,7 @@ export class Lab {
   readonly world = new THREE.Group();
   readonly tools: Tool[] = [];
   readonly vessels: Vessel[] = [];
-  readonly pressables: { mesh: THREE.Object3D; onPress: () => void }[] = [];
+  readonly pressables: { mesh: THREE.Object3D; onPress: (uv?: THREE.Vector2 | null) => void; onPointAt?: (uv: THREE.Vector2 | null) => void }[] = [];
   readonly labels: Label[] = [];
   readonly flames: Flame[] = [];
   readonly flash = new Flash();
@@ -183,8 +183,8 @@ export class Lab {
     this.vessels.push(v);
   }
 
-  addPressable(mesh: THREE.Object3D, onPress: () => void) {
-    this.pressables.push({ mesh, onPress });
+  addPressable(mesh: THREE.Object3D, onPress: (uv?: THREE.Vector2 | null) => void, onPointAt?: (uv: THREE.Vector2 | null) => void) {
+    this.pressables.push({ mesh, onPress, onPointAt });
   }
 
   label(w: number, h: number, draw: Draw, transparent = false) {
@@ -269,8 +269,52 @@ export class Lab {
   /** One drop from a dropper's tip. */
   drip(tool: Tool) {
     if (!tool.drop) return;
+    tool.dispenseDrop();
+
+    tool.root.updateMatrixWorld(true);
+    for (const v of this.vessels) {
+      v.root.updateMatrixWorld(true);
+    }
+
     const p = tool.tipWorld(new THREE.Vector3());
-    this.spawn(p, new THREE.Vector3(0, -0.2, 0), 'drop', tool.drop.part, tool.drop.color, 0.0022);
+
+    // Check if the dropper tip is positioned over an open vessel
+    const m = new THREE.Vector3();
+    let targetVessel: Vessel | null = tool.hoveredVessel ?? null;
+    if (!targetVessel) {
+      let closestDist = Infinity;
+      for (const v of this.openVessels()) {
+        v.mouthWorld(m);
+        const d = Math.hypot(p.x - m.x, p.z - m.z);
+        // Funnel catch zone: within horizontal range of mouth and reasonable vertical span
+        if (p.y >= m.y - 0.25 && p.y <= m.y + 0.45 && d < Math.max(v.rimRadius + 0.08, 0.12)) {
+          if (d < closestDist) {
+            closestDist = d;
+            targetVessel = v;
+          }
+        }
+      }
+    }
+
+    const spawnPos = p.clone();
+    let dropVel = new THREE.Vector3(0, -0.22, 0);
+    if (targetVessel) {
+      targetVessel.mouthWorld(m);
+      // Funnel drop smoothly towards the center of the vessel mouth
+      spawnPos.x = THREE.MathUtils.lerp(p.x, m.x, 0.75);
+      spawnPos.z = THREE.MathUtils.lerp(p.z, m.z, 0.75);
+      dropVel = new THREE.Vector3((m.x - spawnPos.x) * 4, -0.25, (m.z - spawnPos.z) * 4);
+
+      if (!targetVessel.sink) {
+        // Guaranteed immediate delivery into target vessel's mixture
+        addTo(targetVessel.mix, tool.drop.part);
+        targetVessel.onReceive?.(tool.drop.part);
+        targetVessel.updateLook();
+      }
+    }
+
+    // Spawn falling drop animation (part payload is empty if already added to targetVessel)
+    this.spawn(spawnPos, dropVel, 'drop', targetVessel ? emptyMix() : tool.drop.part, tool.drop.color, 0.0024);
     this.record(tool.kind, tool.name, 'drops', 1);
     audio.drip();
   }
@@ -282,7 +326,9 @@ export class Lab {
         ? new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.8, roughness: 0.05 })
         : new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: color === 0x9aa3ab ? 0.6 : 0 }),
     );
-    mesh.position.copy(p);
+    this.world.updateMatrixWorld(true);
+    const localP = this.world.worldToLocal(p.clone());
+    mesh.position.copy(localP);
     this.world.add(mesh);
     this.particles.push({ mesh, vel, part, kind, color, size });
   }
@@ -404,6 +450,10 @@ export class Lab {
     let si = 0;
     for (const s of this.streams) s.visible = false;
     for (const tool of this.tools) {
+      if (tool.capMesh) {
+        // Cap is opened when picked up, allowing free pouring into vessels
+        tool.capMesh.visible = tool.held === null && tool.returning < 0;
+      }
       if (tool.held !== null && tool.use === 'pour' && si < this.streams.length) {
         if (this.pour(tool, dt, this.streams[si])) si++;
       }
@@ -414,6 +464,8 @@ export class Lab {
         tool.root.quaternion.slerpQuaternions(tool.returnFromQuat, tool.homeQuat, e);
         if (tool.returning >= 1) {
           tool.returning = -1;
+          tool.refillDropper();
+          if (tool.capMesh) tool.capMesh.visible = true;
           audio.clink();
         }
       }
@@ -431,51 +483,59 @@ export class Lab {
     }
 
     const m = new THREE.Vector3();
+    const worldPos = new THREE.Vector3();
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];
-      const prevY = p.mesh.position.y;
+      p.mesh.getWorldPosition(worldPos);
+      const prevWorldY = worldPos.y;
+
       p.vel.y -= 9.8 * dt;
       p.mesh.position.addScaledVector(p.vel, dt);
       p.mesh.rotation.x += dt * 5;
-      const pos = p.mesh.position;
+      p.mesh.getWorldPosition(worldPos);
+
       let gone = false;
       for (const v of this.openVessels()) {
         v.mouthWorld(m);
-        if (!(prevY >= m.y && pos.y < m.y)) continue;
-        const d = Math.hypot(pos.x - m.x, pos.z - m.z);
-        const inner = v.sink ? v.rimRadius : v.rimRadius - 0.0015;
+        const crossedMouth = (prevWorldY >= m.y && worldPos.y < m.y);
+        const insideTube = (p.kind === 'drop' && worldPos.y <= m.y && worldPos.y >= m.y - v.height * 0.85 && prevWorldY <= m.y + 0.05);
+        if (!crossedMouth && !insideTube) continue;
+        const d = Math.hypot(worldPos.x - m.x, worldPos.z - m.z);
+        // Funnel tolerance for drops to cleanly enter test tubes & beakers
+        const inner = v.sink ? v.rimRadius : v.rimRadius + 0.012;
         if (d < inner) {
           if (!v.sink) {
             addTo(v.mix, p.part);
             if (p.kind === 'piece') this.addGranule(v, p.color, p.size);
             v.onReceive?.(p.part);
+            v.updateLook();
           }
           if (p.kind === 'piece') audio.plop();
           gone = true;
           break;
         }
-        if (!v.sink && d < v.rimRadius + p.size + 0.001) {
+        if (!v.sink && d < v.rimRadius + p.size + 0.005) {
           // Hit the rim: it ends up outside, at the foot of the glass.
-          const foot = this.runOff(m, v, pos);
+          const foot = this.runOff(m, v, worldPos);
           if (p.kind === 'drop') {
-            this.splashes.emit(pos, p.color, 3, 0.35);
+            this.splashes.emit(worldPos, p.color, 3, 0.35);
             this.puddles.add(foot.x, foot.y, foot.z, p.part.volume, p.color, 0.8);
           } else {
-            p.mesh.position.copy(foot);
+            p.mesh.position.copy(this.world.worldToLocal(foot.clone()));
             this.leaveStray(p, foot.y);
           }
           gone = true;
           break;
         }
       }
-      const ground = groundBelow(pos);
-      if (!gone && pos.y < ground) {
+      const ground = groundBelow(worldPos);
+      if (!gone && worldPos.y < ground) {
         gone = true;
-        pos.y = ground;
+        p.mesh.position.y = this.world.worldToLocal(worldPos.setY(ground)).y;
         if (p.kind === 'drop') {
           // A stray drop leaves a coloured spot and a tiny splash.
-          this.puddles.add(pos.x, ground, pos.z, p.part.volume, p.color, 0.8);
-          this.splashes.emit(pos, p.color, 4, 0.45);
+          this.puddles.add(worldPos.x, ground, worldPos.z, p.part.volume, p.color, 0.8);
+          this.splashes.emit(worldPos, p.color, 4, 0.45);
         } else this.leaveStray(p, ground);
       }
       if (gone) {

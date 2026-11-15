@@ -1,10 +1,19 @@
 import * as THREE from 'three';
-import { getLang, t } from '../i18n';
+import { t } from '../i18n';
 import { fitText } from './parts';
 import { BOARD } from './room';
 
 // The board behind the bench: task list, topic menu and buttons. It is a canvas texture, so the
 // same board works in VR (controller ray) and on a screen (mouse or finger).
+
+export interface ScientificData {
+  equation?: string;
+  observation?: string;
+  explanation?: string;
+  inference?: string;
+  assistant?: string;
+  examTip?: string;
+}
 
 export interface PanelData {
   title: string;
@@ -22,6 +31,7 @@ export interface PanelData {
   inXR: boolean;
   topics: { id: string; title: string; ready: boolean; current: boolean }[];
   toast: string;
+  scientificData?: ScientificData | null;
 }
 
 interface Hit {
@@ -42,20 +52,28 @@ export class WorldPanel {
   private readonly texture: THREE.CanvasTexture;
   private hits: Hit[] = [];
   private hover: string | null = null;
-  private mode: 'main' | 'topics' = 'main';
+  private mode: 'main' | 'topics' | 'chalkboard' = 'main';
   private data: PanelData | null = null;
+  private readonly chalkCanvas = document.createElement('canvas');
+  private readonly chalkCtx: CanvasRenderingContext2D;
+  private hasChalkStrokes = false;
+  private lastChalkPos: { x: number; y: number } | null = null;
   onButton: (id: string) => void = () => {};
 
   constructor() {
     // Drawn at 1.5× so text stays crisp in the headset.
     this.canvas.width = W * SCALE;
     this.canvas.height = H * SCALE;
+    this.chalkCanvas.width = W * SCALE;
+    this.chalkCanvas.height = H * SCALE;
+    this.chalkCtx = this.chalkCanvas.getContext('2d')!;
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.anisotropy = 8;
     // A wall-mounted smart board above the bench.
     this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), new THREE.MeshBasicMaterial({ map: this.texture, toneMapped: false }));
     this.mesh.position.set(BOARD.x, BOARD.y, BOARD.z);
+    this.mesh.renderOrder = 3;
   }
 
   set(data: PanelData) {
@@ -88,7 +106,12 @@ export class WorldPanel {
     if (!id) return false;
     if (id === 'topics') this.showTopics(true);
     else if (id === 'back') this.showTopics(false);
-    else {
+    else if (id === 'btn_board_mode') {
+      this.mode = this.mode === 'chalkboard' ? 'main' : 'chalkboard';
+      this.draw();
+    } else if (id === 'btn_clear_chalk') {
+      this.clearChalk();
+    } else {
       if (id.startsWith('topic:')) this.mode = 'main';
       this.onButton(id);
     }
@@ -127,7 +150,89 @@ export class WorldPanel {
     c.font = '600 30px "Segoe UI", system-ui, sans-serif';
     c.fillText(t('app.title').toUpperCase(), 60, 72);
 
-    if (this.mode === 'topics') {
+    // Top right blackboard action controls
+    this.button(
+      c,
+      'btn_board_mode',
+      this.mode === 'chalkboard' ? '📋 Lecture Tasks' : '✏️ Free Chalkboard',
+      W - 400,
+      26,
+      340,
+      56
+    );
+    if (this.hasChalkStrokes || this.mode === 'chalkboard') {
+      this.button(c, 'btn_clear_chalk', '🧹 Wipe Board', W - 740, 26, 310, 56);
+    }
+
+    if (this.mode === 'chalkboard') {
+      // Paint matte green slate academic chalkboard
+      const grad = c.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#13211c');
+      grad.addColorStop(1, '#0b1612');
+      c.fillStyle = grad;
+      c.fillRect(0, 0, W, H);
+      c.strokeStyle = '#2d5a43';
+      c.lineWidth = 10;
+      c.strokeRect(5, 5, W - 10, H - 10);
+
+      // Soft chalk eraser sweep streaks
+      c.fillStyle = 'rgba(255, 255, 255, 0.022)';
+      for (let i = 0; i < 7; i++) {
+        c.fillRect(20, 110 + i * 120, W - 40, 48);
+      }
+
+      // Coordinate grid for equations & diagrams
+      c.strokeStyle = 'rgba(255, 255, 255, 0.038)';
+      c.lineWidth = 1.2;
+      for (let gx = 80; gx < W; gx += 80) {
+        c.beginPath();
+        c.moveTo(gx, 100);
+        c.lineTo(gx, H - 30);
+        c.stroke();
+      }
+      for (let gy = 120; gy < H; gy += 80) {
+        c.beginPath();
+        c.moveTo(60, gy);
+        c.lineTo(W - 60, gy);
+        c.stroke();
+      }
+
+      // Academic banner
+      c.fillStyle = '#fde047';
+      c.font = '700 44px "Segoe UI", system-ui, sans-serif';
+      c.fillText('🏫 HOLOLAB INTERACTIVE DIGITAL CHALKBOARD', 60, 160);
+
+      c.fillStyle = '#f8fafc';
+      c.font = '600 28px "Segoe UI", system-ui, sans-serif';
+      c.fillText('✏️ Pick up chalk sticks (Red, Blue, White, Yellow) or Board Eraser from the tray below to write.', 60, 215);
+
+      c.fillStyle = '#94a3b8';
+      c.font = '500 24px "Segoe UI", system-ui, sans-serif';
+      c.fillText('• Hold chalk with mouse or VR hand, aim at the board, and drag to draw lines, equations, or diagrams.', 60, 260);
+      c.fillText('• Switch to Felt Eraser to wipe mistakes, or click "🧹 Wipe Board" to clear everything.', 60, 298);
+
+      // Mini laboratory reminder card on chalkboard
+      c.fillStyle = 'rgba(30, 41, 59, 0.7)';
+      roundRect(c, 60, 340, W - 120, H - 380, 16);
+      c.fill();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      c.stroke();
+
+      c.fillStyle = '#38bdf8';
+      c.font = '700 28px "Segoe UI", system-ui, sans-serif';
+      c.fillText('💡 ACTIVE TOPIC: ' + (d.title || 'CHEMISTRY PRACTICAL'), 90, 390);
+
+      if (d.scientificData?.equation) {
+        c.fillStyle = '#fde047';
+        c.font = '700 32px "Courier New", monospace';
+        c.fillText('⚛️ ' + d.scientificData.equation, 90, 445);
+      }
+      if (d.scientificData?.observation) {
+        c.fillStyle = '#e2e8f0';
+        c.font = '500 26px "Segoe UI", system-ui, sans-serif';
+        c.fillText('🔬 ' + d.scientificData.observation, 90, 495);
+      }
+    } else if (this.mode === 'topics') {
       c.fillStyle = '#ffffff';
       c.font = '700 58px "Segoe UI", system-ui, sans-serif';
       c.fillText(t('ui.topics'), 60, 150);
@@ -196,38 +301,72 @@ export class WorldPanel {
         c.fillText(`! ${t('ui.help')}`, 85, infoY + 38);
         c.fillStyle = '#fff6dc';
         wrap(c, d.hint, 85, infoY + 76, 1000, 34, '500 28px "Segoe UI", system-ui, sans-serif', 3);
+      } else if (d.scientificData) {
+        const sd = d.scientificData;
+        if (sd.equation) {
+          c.fillStyle = '#38bdf8';
+          c.font = '800 32px "Segoe UI", system-ui, sans-serif';
+          c.fillText(`⚛️ Equation: ${sd.equation}`, 85, infoY + 36);
+        }
+        if (sd.observation) {
+          c.fillStyle = '#facc15';
+          c.font = '700 27px "Segoe UI", system-ui, sans-serif';
+          c.fillText(`🔬 Observation: ${sd.observation}`, 85, infoY + 74);
+        }
+        const note = [sd.explanation, sd.inference ? `[${sd.inference}]` : ''].filter(Boolean).join('  ');
+        c.fillStyle = '#e2e8f0';
+        wrap(c, note, 85, infoY + 112, 1000, 32, '500 24px "Segoe UI", system-ui, sans-serif', 2);
       } else {
         c.fillStyle = '#e8f1f6';
         wrap(c, d.info, 85, infoY + 52, 1000, 44, '500 34px "Segoe UI", system-ui, sans-serif', 3);
       }
 
-      // Usage: the point of the whole project, nothing runs out.
+      // Usage / Assistant box.
       const ux = 1160;
       c.fillStyle = '#1e3243';
       roundRect(c, ux, 180, 380, 520, 16);
       c.fill();
-      c.fillStyle = '#7fd6c4';
-      c.font = '600 28px "Segoe UI", system-ui, sans-serif';
-      fitText(c, t('ui.used'), 330, 28, 600);
-      c.fillText(t('ui.used'), ux + 25, 228);
-      c.fillStyle = '#e8f1f6';
-      c.font = '500 27px "Segoe UI", system-ui, sans-serif';
-      const lines = d.used.length ? d.used.slice(0, 9) : [t('ui.usedNone')];
-      lines.forEach((l, i) => {
-        fitText(c, l, 330, 27, 500);
-        c.fillText(l, ux + 25, 280 + i * 44);
-      });
-      c.fillStyle = '#f4c95d';
-      c.font = '700 29px "Segoe UI", system-ui, sans-serif';
-      fitText(c, t('ui.supply'), 330, 29, 700);
-      c.fillText(t('ui.supply'), ux + 25, 675);
+
+      if (d.scientificData?.assistant) {
+        c.fillStyle = '#34d399';
+        c.font = '700 28px "Segoe UI", system-ui, sans-serif';
+        c.fillText('👩‍🔬 Lab Assistant Ada', ux + 25, 224);
+
+        c.fillStyle = '#e2e8f0';
+        wrap(c, d.scientificData.assistant, ux + 25, 270, 330, 36, '500 24px "Segoe UI", system-ui, sans-serif', 5);
+
+        if (d.scientificData.examTip) {
+          c.fillStyle = '#f59e0b';
+          c.font = '700 24px "Segoe UI", system-ui, sans-serif';
+          c.fillText('📋 Exam Tip (WAEC/Cambridge):', ux + 25, 470);
+          c.fillStyle = '#fef3c7';
+          wrap(c, d.scientificData.examTip, ux + 25, 506, 330, 30, '500 21px "Segoe UI", system-ui, sans-serif', 4);
+        }
+
+        c.fillStyle = '#f4c95d';
+        c.font = '700 26px "Segoe UI", system-ui, sans-serif';
+        c.fillText(t('ui.supply'), ux + 25, 675);
+      } else {
+        c.fillStyle = '#7fd6c4';
+        c.font = '600 28px "Segoe UI", system-ui, sans-serif';
+        fitText(c, t('ui.used'), 330, 28, 600);
+        c.fillText(t('ui.used'), ux + 25, 228);
+        c.fillStyle = '#e8f1f6';
+        c.font = '500 27px "Segoe UI", system-ui, sans-serif';
+        const lines = d.used.length ? d.used.slice(0, 9) : [t('ui.usedNone')];
+        lines.forEach((l, i) => {
+          fitText(c, l, 330, 27, 500);
+          c.fillText(l, ux + 25, 280 + i * 44);
+        });
+        c.fillStyle = '#f4c95d';
+        c.font = '700 29px "Segoe UI", system-ui, sans-serif';
+        fitText(c, t('ui.supply'), 330, 29, 700);
+        c.fillText(t('ui.supply'), ux + 25, 675);
+      }
 
       const by = H - 145;
       this.button(c, 'topics', `☰ ${t('ui.topics')}`, 60, by, 330, 95, true);
       this.button(c, 'reset', `↺ ${t('ui.reset')}`, 410, by, 360, 95);
-      // Language: both choices visible, the current one highlighted.
-      this.button(c, 'langEn', 'EN', 790, by, 120, 95, getLang() === 'en');
-      this.button(c, 'langUz', 'UZ', 920, by, 120, 95, getLang() === 'uz');
       // Table height: lower / current / raise.
       this.button(c, 'tableDown', '▼', 1060, by, 90, 95);
       c.fillStyle = '#ffffff';
@@ -270,7 +409,65 @@ export class WorldPanel {
       fitText(c, d.toast, W - 160, 44, 700);
       c.fillText(d.toast, W / 2, 96);
     }
+    // Overlay user's persistent chalk drawings
+    c.drawImage(this.chalkCanvas, 0, 0, W, H);
+
     this.texture.needsUpdate = true;
+  }
+
+  drawChalk(uv: THREE.Vector2, color: string, isEraser = false, isContinuous = false) {
+    const x = uv.x * W * SCALE;
+    const y = (1 - uv.y) * H * SCALE;
+
+    this.chalkCtx.save();
+    if (isEraser) {
+      this.chalkCtx.globalCompositeOperation = 'destination-out';
+      this.chalkCtx.beginPath();
+      this.chalkCtx.arc(x, y, 42 * SCALE, 0, Math.PI * 2);
+      this.chalkCtx.fill();
+    } else {
+      this.hasChalkStrokes = true;
+      this.chalkCtx.globalCompositeOperation = 'source-over';
+      this.chalkCtx.fillStyle = color;
+      this.chalkCtx.strokeStyle = color;
+      this.chalkCtx.lineCap = 'round';
+      this.chalkCtx.lineJoin = 'round';
+      this.chalkCtx.lineWidth = 11 * SCALE;
+
+      if (this.lastChalkPos && isContinuous) {
+        this.chalkCtx.beginPath();
+        this.chalkCtx.moveTo(this.lastChalkPos.x, this.lastChalkPos.y);
+        this.chalkCtx.lineTo(x, y);
+        this.chalkCtx.stroke();
+      } else {
+        this.chalkCtx.beginPath();
+        this.chalkCtx.arc(x, y, 5.5 * SCALE, 0, Math.PI * 2);
+        this.chalkCtx.fill();
+      }
+
+      // Soft powdery chalk edge particles
+      for (let i = 0; i < 3; i++) {
+        const ox = (Math.random() - 0.5) * 16 * SCALE;
+        const oy = (Math.random() - 0.5) * 16 * SCALE;
+        this.chalkCtx.globalAlpha = 0.35 + Math.random() * 0.45;
+        this.chalkCtx.fillRect(x + ox, y + oy, 2.4 * SCALE, 2.4 * SCALE);
+      }
+    }
+    this.chalkCtx.restore();
+    this.lastChalkPos = { x, y };
+
+    this.draw();
+  }
+
+  endChalkStroke() {
+    this.lastChalkPos = null;
+  }
+
+  clearChalk() {
+    this.chalkCtx.clearRect(0, 0, this.chalkCanvas.width, this.chalkCanvas.height);
+    this.hasChalkStrokes = false;
+    this.lastChalkPos = null;
+    this.draw();
   }
 }
 
