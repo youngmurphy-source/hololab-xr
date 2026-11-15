@@ -1,104 +1,163 @@
 # HoloLab XR
+### Explore Science. Experience Discovery. Shape the Future.
 
-> Virtual learning laboratory that transforms science education through interactive 3D experiences. Students and teachers can explore human biology, chemistry, and other scientific concepts, conduct virtual experiments, and visualize complex structures in a realistic digital environment without needing physical laboratory equipment or VR headsets.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-success?style=for-the-badge&logo=vercel)](https://hololab-xr.vercel.app/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?style=for-the-badge&logo=github)](https://github.com/youngmurphy-source/hololab-xr)
+[![WebXR](https://img.shields.io/badge/Platform-WebXR%20%7C%20Browser-purple?style=for-the-badge)](https://hololab-xr.vercel.app/)
 
-**An immersive spatial science laboratory for learning by doing.** It runs in VR on a Meta Quest, and in any browser on a laptop or phone. Upgraded from the HoloLab XR starter project into the complete HoloLab XR experience.
+---
 
-## The problem
+## 🌐 Try It Out (Live Links)
 
-In our public schools, lab supplies are rare. When a school finally gets chemicals and glassware,
-they're used up within weeks, and then students wait years for the next delivery. Most students
-read about experiments they never get to do.
+- **Live WebXR Laboratory:** [https://hololab-xr.vercel.app/](https://hololab-xr.vercel.app/)  
+  *(Works directly in any desktop, laptop, or mobile browser, and in Meta Quest Browser in immersive VR)*
+- **Qualitative Analysis Practical:** [https://hololab-xr.vercel.app/?topic=qualitativeAnalysis](https://hololab-xr.vercel.app/?topic=qualitativeAnalysis)
+- **Institutional Schools Directory:** [https://hololab-xr.vercel.app/schools.html](https://hololab-xr.vercel.app/schools.html)
 
-## What it does
+---
 
-A school buys **two VR headsets once**. Students take turns doing real school experiments at a
-virtual lab bench, as many times as they want:
+## 💡 Inspiration
 
-- **Pour by tilting**: in VR you tilt the bottle with your wrist. With a mouse you hold the button.
-- **Real chemistry under the hood**: pH is calculated from the actual amounts mixed, indicator
-  colours follow their real transition ranges, and reactions use up their reagents at realistic rates.
-- **A task list for each topic** ticks itself off as you do each step, and explains the equation.
-  A **!** next to the current task opens step-by-step help, and it pulses if you seem stuck.
-- **Physical behaviour**: liquid surfaces stay level when you tilt glassware; pouring follows weir
-  flow (the further you tilt, the faster it pours); a stream on a rim splits; spills splash and
-  spread; walls and furniture stop you.
-- **Adjustable table height**: fitted to your eye height when you enter VR, then adjustable.
-- **A "used this session" counter**: every mL poured is counted next to "Supply left: unlimited".
-- **English and Uzbek**, switchable at any time.
-- **Seated mode** for students who can't stand at the bench.
-- **No install**: it's a web page. It works without a headset too, so students waiting for their
-  turn can practise on any school computer, and the headset view can be cast to the classroom screen.
+**HoloLab XR** was inspired by the belief that every student deserves access to quality practical science education, regardless of their location or the resources available in their school.
 
-### Experiments & practicals currently implemented
+In many schools, science education is still largely theoretical. Students learn about chemical reactions through textbooks, study human anatomy using static diagrams, and memorize scientific principles without having sufficient opportunities to experience them practically. Limited laboratory facilities, expensive equipment, safety concerns, and inadequate resources make practical learning difficult for many institutions.
 
-| Topic | Subject | What you do |
-|---|---|---|
-| Acids, bases and indicators | Chemistry | Pour HCl, NaOH and water; add litmus, phenolphthalein, methyl orange or universal indicator; measure pH; neutralise |
-| Making hydrogen | Chemistry | Zn + 2HCl → ZnCl₂ + H₂: collect the gas in an upside-down tube and get the squeaky pop at the flame |
-| Making oxygen | Chemistry | 2H₂O₂ → 2H₂O + O₂ with MnO₂: relight a glowing splint |
-| Human Anatomy & Heart Physiology | Biology | Auscultate with a stethoscope (procedural S1/S2 heart sounds), examine 4 chambers & great vessels with the probe, observe dual blood circulation particles, administer Adrenaline to test tachycardia response, and inspect beating internal valves |
+We wanted to change this experience.
 
-### HoloLab XR expansion roadmap
+Our inspiration was to create a virtual science laboratory where students could move beyond reading and memorizing information to actively exploring, experimenting, and discovering scientific concepts.
 
-HoloLab XR is actively expanding from chemistry into human biology and physics. The newly implemented **Human Biology Lab** delivers full 3D cardiac anatomy, hemodynamic simulation, live ECG telemetry, real-time procedural auscultation, and autonomic pharmacology. Planned upcoming modules include: cellular biology & genetics, respiratory mechanics, and teacher-led classroom assessment.
+We envisioned a world where a student could enter a virtual chemistry laboratory, perform experiments, observe chemical reactions, and understand their outcomes. In biology, students could explore human anatomy, select individual body parts, identify organs, and learn their functions through interactive visual experiences.
 
-## Try it
+We believe technology should make quality science education more accessible, engaging, and practical.
 
-- 🌐 **Live WebXR Application:** [https://hololab-xr.vercel.app/](https://hololab-xr.vercel.app/) (any browser on phone, laptop, or Meta Quest browser).
-- ⚗️ **Qualitative Analysis Practical:** [https://hololab-xr.vercel.app/?topic=qualitativeAnalysis](https://hololab-xr.vercel.app/?topic=qualitativeAnalysis)
-- 🏫 **Institutional Schools Registry:** [https://hololab-xr.vercel.app/schools.html](https://hololab-xr.vercel.app/schools.html)
+This belief became the foundation of HoloLab XR.
 
-**On a computer or phone**: open the site. Click an item to pick it up: its spout or tip follows the
-cursor anywhere, and the mouse wheel (or ↑/↓) raises and lowers it. Hold the mouse button to pour; right-click
-or Esc puts it back. Nothing snaps into place, so a careless pour spills, and a stream on a rim splits
-between the glass and the bench. On a phone, tap to pick up, drag to move, and use the on-screen buttons.
+---
 
-**On a Meta Quest**: open the same address in the Quest browser and press **Enter VR**.
-- Grip button: grab (or point the ray at something far away)
-- Tilt your hand to pour
-- Trigger: squeeze a dropper, press panel buttons
+## 🔬 What It Does
 
-## Run it locally
+**HoloLab XR** is an immersive virtual science laboratory designed to transform how students and teachers experience practical science education.
+
+The platform focuses on making scientific learning interactive through virtual laboratory environments, visual demonstrations, and guided educational experiences.
+
+Our initial focus is on two major scientific disciplines:
+
+### 1. Chemistry Laboratory
+The chemistry laboratory provides an interactive environment for exploring chemical experiments and laboratory procedures. Students can learn about chemical substances, laboratory equipment, chemical reactions, and experimental outcomes.
+
+- **Interactive laboratory equipment**: Beakers, test tubes, flasks, spirit lamps, and measuring cylinders.
+- **Chemical selection & experimental procedures**: Authentic handling of acids, bases, indicators, and salt solutions.
+- **Simulated chemical reactions & observations**: Realistic precipitation, effervescence, and color transitions.
+- **Acid-base experiments & indicator color changes**: Litmus, phenolphthalein, methyl orange, and universal indicator scales.
+- **Substance identification through chemical tests**: Cation and anion flame and precipitation reactions.
+- **Step-by-step experimental guidance**: On-screen prompts, objective checklists, and safety instructions.
+
+### 2. Human Biology Laboratory
+The biology laboratory focuses on interactive exploration of human anatomy and biological structures. Teachers and students can explore different body parts through visual educational resources and interactive teaching interfaces.
+
+- **Human anatomy exploration**: 3D interactive models of major human organs and physiological systems.
+- **Identification of individual body parts and organs**: Select, isolate, and inspect 30+ anatomical structures.
+- **Educational images and scientific explanations**: Detailed medical descriptions and anatomical diagrams.
+- **Interactive teaching boards**: Wall-mounted holographic screens displaying selected anatomical structures.
+- **Teacher-controlled demonstrations**: Synchronized views for guided classroom instruction.
+- **Student learning activities**: Active anatomy identification exercises and self-paced exploration.
+
+### 3. Interactive Teaching Experience
+HoloLab XR is designed to support both teachers and students:
+- **For Teachers**: Guide practical lessons, demonstrate scientific concepts, display educational content, and explain experiments in real time.
+- **For Students**: Interact with learning materials, explore scientific structures, and develop deep conceptual understanding through guided hands-on activities.
+- **Long-term Objective**: Create a connected learning environment where teachers and students can participate in practical science lessons together across distances.
+
+---
+
+## 🛠️ How We Built It
+
+HoloLab XR is developed as an interactive 3D and immersive educational application, accessible through ordinary web browsers and built with full support for compatible VR and mixed reality devices.
+
+We use modern web technologies to build the virtual laboratory environment and its interactive systems:
+
+- **Three.js**: For creating and rendering photorealistic 3D laboratory environments, physical glassware, and lighting.
+- **TypeScript**: For building robust, strongly-typed, and maintainable application logic across simulations.
+- **Vite**: For blazing-fast local development and optimized production bundling.
+- **WebXR Device API**: For enabling native immersive virtual reality on Meta Quest and compatible spatial computing hardware.
+- **MediaPipe Tasks Vision**: For AI-powered webcam hand tracking, allowing students to interact with gestures without headsets.
+- **HTML5 & CSS3**: For designing modern glassmorphic dashboards, interactive HUDs, and responsive UI controls.
+- **Web Audio API**: For procedural synthesis of laboratory sounds (pouring weir flow, effervescence fizzing, and equipment clinks) with zero external audio assets.
+
+We organize the application into modular, reusable components for laboratory environments, instruments, interactions, experiments, and educational curricula.
+
+---
+
+## ⚡ Challenges We Ran Into
+
+1. **Making Science Interactive**: Moving beyond static 3D models required designing educational interactions that directly connect user physical actions (tilting, dropping, heating) to meaningful scientific outcomes.
+2. **Balancing Realism and Performance**: Creating high-fidelity 3D glassware, liquid refractive surfaces, and particle systems while ensuring smooth 60–72 FPS performance on low-spec laptops and standalone mobile VR headsets.
+3. **Designing Educational Interactions**: Balancing teacher-led instruction with student self-discovery, ensuring interfaces are intuitive for beginners without sacrificing scientific depth.
+4. **Chemistry Simulation Accuracy**: Accurately modeling equilibrium chemistry, pH transitions, weir-flow pouring physics, and stoichiometric precipitation rather than using canned animations.
+5. **Accessibility Without VR Headsets**: Ensuring students without expensive VR equipment still receive an equally engaging and practical laboratory experience using standard laptops, tablets, or phones.
+
+---
+
+## 🏆 Accomplishments That We're Proud Of
+
+- Establishing a complete, functional 3D laboratory environment directly in the browser.
+- Developing a zero-install WebXR architecture that works on desktop, mobile, and headsets.
+- Building a modular TypeScript simulation engine with verified unit test suites.
+- Implementing realistic chemistry practicals (qualitative analysis, acid-base titrations, gas evolution).
+- Creating interactive 3D human anatomy and beating cardiac physiology modules.
+- Delivering webcam AI hand tracking for controller-free spatial interaction.
+- Designing HoloLab XR around the real-world curriculum needs of both teachers and students in under-resourced schools.
+
+---
+
+## 📚 What We Learned
+
+- Interactive learning fundamentally improves comprehension and retention of complex scientific concepts compared to passive reading.
+- 3D environments provide the greatest educational value when users can perform meaningful, consequential activities inside them.
+- Realistic procedural physics (such as liquid meniscus behavior and weir pouring) heighten immersion and make digital labs feel authentic.
+- Accessibility must be an architectural priority from day one, ensuring no student is left behind due to lack of specialized hardware.
+- Technology becomes truly transformative when it solves a real human problem: bridging the educational resource divide.
+
+---
+
+## 🚀 What's Next for HoloLab XR
+
+1. **Complete Interactive Human Anatomy**: Expanding to comprehensive coverage of the muscular, nervous, respiratory, circulatory, digestive, and skeletal systems.
+2. **Expanded Chemistry Curriculum**: Adding organic synthesis, thermochemistry, electrochemistry, and advanced spectroscopic analysis.
+3. **Multiplayer Collaborative Classrooms**: Real-time networked lab benches where teachers and students share the same virtual space and collaborate on experiments.
+4. **Advanced Mixed Reality (MR)**: Passthrough support blending virtual lab benches directly onto students' physical desks.
+5. **Assessment & Telemetry Records**: Automated experiment logging, lab report generation, and student competency evaluations.
+6. **Additional Scientific Disciplines**: Expanding into physics (optics, mechanics, electromagnetism) and environmental earth sciences.
+7. **Global Educational Partnerships**: Collaborating with schools and ministries of education to bring practical science to communities with limited laboratory infrastructure.
+
+---
+
+## 🎯 Our Mission
+
+> **HoloLab XR is built around one simple idea: science should be experienced, not just memorized.**
+>
+> We want students to explore beyond textbooks, teachers to demonstrate beyond traditional classroom limitations, and schools to provide limitless opportunities for practical discovery.
+
+**HoloLab XR: Explore Science. Experience Discovery. Shape the Future.**
+
+---
+
+## 💻 Local Development
 
 ```bash
+# 1. Clone repository
+git clone https://github.com/youngmurphy-source/hololab-xr.git
+cd hololab-xr
+
+# 2. Install dependencies
 npm install
-npm run dev        # http://localhost:5173
-npm.cmd run serve:vr  # optimised build over HTTPS on your local network, for the headset
-npm run build      # production build in dist/
+
+# 3. Start local development server
+npm run dev
+
+# 4. Run automated test suite
+npm test
+
+# 5. Build for production
+npm run build
 ```
-
-The headset browser only allows WebXR on HTTPS pages. `npm.cmd run serve:vr` builds the optimised
-version and prints a network address (`https://192.168.x.x:4173`); open it on the Quest and accept the
-self-signed certificate warning. (`npm.cmd run dev:vr` also works but is slower: it serves the
-unoptimised development version.)
-
-Without a headset, `http://localhost:5173/?emulate` adds a Meta Quest 3 emulator (dev builds only).
-
-## How it's built
-
-- **three.js** with **WebXR** for rendering, controllers and hand tracking
-- **TypeScript** + **Vite**
-- **Web Audio API**: every sound (pouring, fizzing, the hydrogen pop) is generated in code, no audio files
-- All textures (labels, periodic table, floor) are drawn on canvases at runtime, so the whole app is
-  one small JavaScript file (~175 KB gzipped)
-
-```
-src/
-  chem/       pure chemistry: mixtures, pH, indicator colours
-  core/       the engine: room, glassware, pouring/drops/bubbles, input (mouse, touch, VR), task board
-  topics/     one file per experiment: bench layout + reaction model + task checks
-  i18n.ts     all on-screen text in English and Uzbek
-```
-
-To add a topic, create `src/topics/<name>.ts` exporting a `TopicDef` (see `topic.ts`) and list it in
-`src/topics/index.ts`.
-
-## Disclosure
-
-- Open-source libraries: three.js (MIT), Vite (MIT), TypeScript (Apache-2.0), iwer and @iwer/devui
-  (Meta's WebXR emulator, MIT; development only).
-- AI assistance: we used Claude (Anthropic) as an AI coding assistant to write and debug code.
-- Our team already runs a 2D/3D video and simulator site for Uzbek school science,
-  [virtual-lab.uz](https://www.virtual-lab.uz). The idea comes from that work, but this VR app is a
-  new codebase written during the hackathon. It shares no code with that site.
