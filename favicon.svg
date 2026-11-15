@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <!-- Background Shield Gradient -->
+    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#071b2c" />
+      <stop offset="50%" stop-color="#0c2338" />
+      <stop offset="100%" stop-color="#04121d" />
+    </linearGradient>
+
+    <!-- Neon Hologram Border -->
+    <linearGradient id="neonBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="40%" stop-color="#2dd4bf" />
+      <stop offset="80%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Atom Orbit 1 -->
+    <linearGradient id="orbitGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Atom Orbit 2 -->
+    <linearGradient id="orbitGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <!-- Core Holographic Diamond / Helix Core -->
+    <linearGradient id="corePrism" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="25%" stop-color="#38bdf8" />
+      <stop offset="65%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="holoGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Base Rounded Hex Shield -->
+  <rect x="6" y="6" width="108" height="108" rx="26" fill="url(#shieldBg)" stroke="url(#neonBorder)" stroke-width="2.5" />
+
+  <!-- Subtle Inner Hologram Grid / HUD Ring -->
+  <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1.5" stroke-dasharray="3 4" />
+  <circle cx="60" cy="60" r="40" fill="none" stroke="rgba(45, 212, 191, 0.12)" stroke-width="1" />
+
+  <!-- Atomic Orbit 1 (Tilted -35 deg) -->
+  <g transform="translate(60, 60) rotate(-35)">
+    <ellipse cx="0" cy="0" rx="42" ry="16" fill="none" stroke="url(#orbitGrad1)" stroke-width="2.2" opacity="0.9" />
+    <!-- Quantum Electron Node 1 -->
+    <circle cx="38" cy="-6" r="3.2" fill="#38bdf8" filter="url(#holoGlow)" />
+    <circle cx="38" cy="-6" r="1.5" fill="#ffffff" />
+    <!-- Quantum Electron Node 2 -->
+    <circle cx="-38" cy="6" r="2.8" fill="#10b981" filter="url(#holoGlow)" />
+  </g>
+
+  <!-- Atomic Orbit 2 (Tilted +35 deg) -->
+  <g transform="translate(60, 60) rotate(35)">
+    <ellipse cx="0" cy="0" rx="42" ry="16" fill="none" stroke="url(#orbitGrad2)" stroke-width="2.2" opacity="0.9" />
+    <!-- Quantum Electron Node 3 -->
+    <circle cx="-32" cy="-10" r="3" fill="#818cf8" filter="url(#holoGlow)" />
+    <circle cx="-32" cy="-10" r="1.4" fill="#ffffff" />
+    <!-- Quantum Electron Node 4 -->
+    <circle cx="32" cy="10" r="2.8" fill="#06b6d4" filter="url(#holoGlow)" />
+  </g>
+
+  <!-- Horizontal Spatial Ring (XR Depth Ring) -->
+  <ellipse cx="60" cy="60" rx="30" ry="8" fill="none" stroke="rgba(255, 255, 255, 0.35)" stroke-width="1.2" stroke-dasharray="2 3" />
+
+  <!-- DNA Double Helix Micro-Ladder / Science Core -->
+  <line x1="52" y1="44" x2="68" y2="44" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" opacity="0.85" />
+  <line x1="55" y1="52" x2="65" y2="52" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+  <line x1="55" y1="68" x2="65" y2="68" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+  <line x1="52" y1="76" x2="68" y2="76" stroke="#10b981" stroke-width="2" stroke-linecap="round" opacity="0.85" />
+
+  <!-- Stylized DNA Helix Strands Crossing through Center -->
+  <path d="M 50 38 Q 60 48 70 60 Q 60 72 50 82" fill="none" stroke="url(#corePrism)" stroke-width="3" stroke-linecap="round" filter="url(#holoGlow)" />
+  <path d="M 70 38 Q 60 48 50 60 Q 60 72 70 82" fill="none" stroke="url(#orbitGrad1)" stroke-width="3" stroke-linecap="round" filter="url(#holoGlow)" />
+
+  <!-- Central Holographic Energy Quantum Core (Glowing Nucleus) -->
+  <circle cx="60" cy="60" r="6" fill="#00f2fe" filter="url(#holoGlow)" />
+  <circle cx="60" cy="60" r="3.2" fill="#ffffff" />
+
+  <!-- Corner Tech HUD Accents -->
+  <path d="M 16 26 L 16 16 L 26 16" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" opacity="0.6" />
+  <path d="M 104 26 L 104 16 L 94 16" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" opacity="0.6" />
+  <path d="M 16 94 L 16 104 L 26 104" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" opacity="0.6" />
+  <path d="M 104 94 L 104 104 L 94 104" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" opacity="0.6" />
+</svg>

@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>HoloLab XR | Registered Institutions</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/hololab-logo.svg" />
+    <style>:root{--app-bg:#e8edf3;--sidebar-bg:#ffffffc7;--panel-bg:#e2e8f0;--card-glass:#ffffffe0;--card-glass-hover:#fffffffa;--card-glass-inset:#f8fafce0;--border-glass:1px solid #ffffffeb;--border-subtle:1px solid #e2e8f0d9;--text-main:#0f172a;--text-secondary:#334155;--text-muted:#64748b;--text-light:#94a3b8;--accent-blue:#0284c7;--accent-cyan:#06b6d4;--accent-purple:#9333ea;--accent-amber:#d97706;--accent-green:#059669;--glass-surface:#ffffffe0;--glass-surface-subtle:#ffffffb3;--glass-border:1px solid #fffffff2;--glass-border-light:1px solid #e2e8f0d9;--glass-shadow:0 10px 25px -4px #0f172a12, 0 4px 10px -2px #0f172a08, inset 0 1px 1px #fff;--glass-shadow-hover:0 18px 36px -6px #0f172a1f, 0 6px 14px -3px #0f172a0d, inset 0 1px 1px #fff;--glass-inset:inset 1px 2px 4px #0f172a0a, inset 0 -1px 1px #ffffffd9;--glass-pill-shadow:0 2px 6px #0f172a0a, inset 0 1px 1px #fff}*{box-sizing:border-box;margin:0;padding:0}html,body{background-color:var(--app-bg);height:100%;color:var(--text-main);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Google Sans,sans-serif;overflow:hidden}.global-topbar{-webkit-backdrop-filter:blur(20px)saturate(180%);z-index:100;background:#ffffffd9;border-bottom:1px solid #e2e8f0e6;justify-content:space-between;align-items:center;height:58px;padding:0 20px;display:flex;position:relative;box-shadow:0 4px 20px #0f172a08}.topbar-left{align-items:center;gap:16px;display:flex}.topbar-brand{color:#0f172a;box-shadow:var(--glass-pill-shadow);background:#fff;border:1px solid #e2e8f0f2;border-radius:20px;align-items:center;gap:8px;padding:6px 14px;text-decoration:none;display:inline-flex}.topbar-brand-icon{color:#fff;background:#0f172a;border-radius:6px;place-items:center;width:22px;height:22px;font-size:13px;font-weight:900;display:grid}.topbar-brand-name{letter-spacing:.08em;font-size:13px;font-weight:800}.topbar-search-trigger,.topbar-menu-trigger{color:#475569;cursor:pointer;background:0 0;border:0;border-radius:6px;padding:6px;font-size:15px;transition:color .15s}.topbar-search-trigger:hover,.topbar-menu-trigger:hover{color:#0f172a}.topbar-right{align-items:center;gap:12px;display:flex}.topbar-pill-btn{color:#0f172a;cursor:pointer;box-shadow:var(--glass-pill-shadow);background:#fff;border:1px solid #cbd5e1;border-radius:20px;align-items:center;gap:6px;padding:6px 14px;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;display:inline-flex}.topbar-pill-btn:hover{color:#0284c7;background:#f8fafc;border-color:#0284c7;transform:translateY(-1px)}.topbar-coin-badge{color:#b45309;background:#f59e0b1f;border:1px solid #f59e0b59;border-radius:20px;align-items:center;gap:6px;padding:5px 12px;font-size:11.5px;font-weight:700;display:inline-flex}.topbar-notif-btn{color:#475569;cursor:pointer;background:0 0;border:0;padding:6px;font-size:16px;position:relative}.topbar-notif-badge{color:#fff;background:#0284c7;border-radius:8px;padding:1px 5px;font-size:9.5px;font-weight:800;position:absolute;top:2px;right:0;box-shadow:0 0 6px #0284c766}.topbar-action-dashboard{color:#fff;background:#0284c7;border:1px solid #0284c7;border-radius:20px;align-items:center;gap:6px;padding:6px 16px;font-size:12.5px;font-weight:700;text-decoration:none;transition:all .15s;display:inline-flex;box-shadow:0 4px 10px #0284c740}.topbar-action-dashboard:hover{background:#0ea5e9;border-color:#0ea5e9;transform:translateY(-1px)}.app-shell{background:var(--app-bg);gap:16px;height:calc(100vh - 58px);padding:14px;display:flex}.app-sidebar{flex-direction:column;flex-shrink:0;gap:12px;width:250px;display:flex}.sidebar-profile-card{background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px)saturate(180%);text-align:center;border-radius:18px;flex-direction:column;align-items:center;padding:16px;display:flex}.profile-avatar-circle{border:2px solid var(--accent-blue);color:#0284c7;letter-spacing:.05em;background:linear-gradient(135deg,#e0f2fe 0%,#bae6fd 100%);border-radius:50%;place-items:center;width:52px;height:52px;margin-bottom:8px;font-size:15px;font-weight:800;display:grid;box-shadow:0 4px 12px #0284c733}.profile-title{letter-spacing:.06em;color:#0f172a;text-transform:uppercase;font-size:12.5px;font-weight:800}.profile-status{color:#059669;align-items:center;gap:5px;margin-top:4px;font-size:11px;font-weight:600;display:flex}.profile-status .status-dot{background:#10b981;border-radius:50%;width:7px;height:7px;box-shadow:0 0 6px #10b981}.sidebar-nav-container{background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px)saturate(180%);border-radius:18px;flex-direction:column;flex:1;gap:6px;padding:12px 10px;display:flex;overflow-y:auto}.nav-pill-item{color:#475569;cursor:pointer;box-shadow:var(--glass-pill-shadow);background:#ffffffa6;border:1px solid #e2e8f0d9;border-radius:20px;align-items:center;gap:10px;padding:8px 14px;font-size:12px;font-weight:600;text-decoration:none;transition:all .18s;display:flex}.nav-pill-item:hover{color:#0f172a;background:#fff;border-color:#cbd5e1;transform:translate(2px)}.nav-pill-item.active{color:#0284c7;background:#0284c71f;border-color:#0284c766;font-weight:700;box-shadow:0 2px 8px #0284c726}.nav-pill-item .pill-icon{text-align:center;width:16px;font-size:13.5px}.sidebar-bottom-actions{border-top:1px solid #e2e8f0cc;flex-direction:column;gap:8px;margin-top:auto;padding-top:10px;display:flex}.btn-sidebar-upgrade{color:#b45309;cursor:pointer;width:100%;box-shadow:var(--glass-pill-shadow);background:#f59e0b1f;border:1px solid #f59e0b59;border-radius:20px;justify-content:center;align-items:center;gap:6px;padding:9px;font-size:12px;font-weight:700;transition:all .2s;display:flex}.btn-sidebar-upgrade:hover{background:#f59e0b33;transform:translateY(-1px)}.btn-sidebar-lab{color:#fff;cursor:pointer;background:#0284c7;border:1px solid #0284c7;border-radius:20px;justify-content:center;align-items:center;gap:6px;width:100%;padding:9px;font-size:12px;font-weight:700;text-decoration:none;transition:all .2s;display:flex;box-shadow:0 4px 10px #0284c740}.btn-sidebar-lab:hover{background:#0ea5e9;transform:translateY(-1px)}.app-main-panel{background:var(--panel-bg);border:1px solid #cbd5e1d9;border-radius:28px;flex-direction:column;flex:1;gap:18px;padding:22px;display:flex;overflow-y:auto;box-shadow:inset 0 2px 6px #0f172a0a,0 10px 30px #0f172a0d}.panel-caution-strip{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#92400e;background:#fef3c7d9;border:1px solid #fde68a;border-radius:14px;justify-content:space-between;align-items:center;padding:12px 18px;font-size:13px;font-weight:600;display:flex;box-shadow:0 2px 8px #f59e0b14}.caution-content{flex-wrap:wrap;align-items:center;gap:10px;display:flex}.caution-tag{color:#fff;text-transform:uppercase;letter-spacing:.05em;background:#f59e0b;border-radius:4px;padding:2px 7px;font-size:10.5px;font-weight:800}.caution-subtext{color:#b45309;font-size:12px;font-weight:500}.caution-action-btn{color:#92400e;cursor:pointer;background:#f59e0b29;border:1px solid #f59e0b;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;transition:all .15s}.caution-action-btn:hover{background:#f59e0b47}.panel-hero-card{background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px)saturate(180%);color:#0f172a;border-radius:20px;justify-content:space-between;align-items:center;padding:24px 28px;display:flex}.hero-tag{color:#0284c7;text-transform:uppercase;letter-spacing:.06em;background:#0284c71a;border:1px solid #0284c740;border-radius:20px;align-items:center;gap:5px;margin-bottom:8px;padding:4px 10px;font-size:11px;font-weight:700;display:inline-flex}.hero-heading{color:#0f172a;letter-spacing:-.01em;font-size:26px;font-weight:800}.hero-sub{color:#64748b;margin-top:4px;font-size:13px}.hero-actions{gap:10px;display:flex}.btn-hero-action{color:#0f172a;cursor:pointer;box-shadow:var(--glass-pill-shadow);background:#fff;border:1px solid #cbd5e1;border-radius:10px;align-items:center;gap:6px;padding:10px 18px;font-size:13px;font-weight:700;transition:all .15s;display:inline-flex}.btn-hero-action.primary{color:#fff;background:#0284c7;border-color:#0284c7;box-shadow:0 4px 12px #0284c740}.btn-hero-action:hover{background:#f8fafc;transform:translateY(-1px)}.btn-hero-action.primary:hover{background:#0ea5e9;border-color:#0ea5e9}.panel-dials-card{background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px)saturate(180%);border-radius:22px;grid-template-columns:repeat(4,1fr);gap:20px;width:100%;padding:28px 40px;display:grid}.dial-item{text-align:center;flex-direction:column;align-items:center;display:flex}.dial-title{color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-size:12px;font-weight:700}.dial-svg-wrap{place-items:center;width:110px;height:110px;display:grid;position:relative}.dial-svg{width:100%;height:100%;transform:rotate(-90deg)}.dial-circle-bg{fill:none;stroke:#e2e8f0;stroke-width:8.5px;stroke-dasharray:3.5 2.5}.dial-circle-fill{fill:none;stroke-width:8.5px;stroke-linecap:round;transition:stroke-dashoffset .8s}.dial-center-content{pointer-events:none;flex-direction:column;justify-content:center;align-items:center;display:flex;position:absolute}.dial-val{color:#0f172a;font-size:23px;font-weight:800;line-height:1}.dial-sub{color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;font-size:10.5px;font-weight:700}.panel-filter-bar{-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);background:#ffffffd9;border:1px solid #e2e8f0;border-radius:16px;justify-content:space-between;align-items:center;gap:16px;padding:8px 14px;display:flex;box-shadow:0 2px 10px #0f172a08}.canvas-filter-pills{flex-wrap:wrap;gap:6px;display:flex}.canvas-pill{color:#475569;cursor:pointer;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;transition:all .15s}.canvas-pill:hover{color:#0f172a;background:#fff;border-color:#cbd5e1}.canvas-pill.active{color:#fff;background:#0f172a;border-color:#0f172a;box-shadow:0 2px 8px #0f172a2e}.canvas-search-box{width:250px;position:relative}.canvas-search-input{color:#0f172a;background:#fff;border:1px solid #cbd5e1;border-radius:20px;outline:none;width:100%;padding:8px 12px 8px 32px;font-size:12.5px;transition:border-color .2s,box-shadow .2s}.canvas-search-input:focus{border-color:#0284c7;box-shadow:0 0 0 3px #0284c71f}.canvas-search-ico{color:#94a3b8;font-size:13px;position:absolute;top:50%;left:10px;transform:translateY(-50%)}.schools-grid{grid-template-columns:repeat(4,1fr);gap:16px;display:grid}.school-card{background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px)saturate(180%);text-align:center;cursor:pointer;border-radius:20px;flex-direction:column;align-items:center;padding:18px 16px 14px;transition:all .22s cubic-bezier(.16,1,.3,1);display:flex;position:relative}.school-card:hover{box-shadow:var(--glass-shadow-hover);border-color:#0284c766;transform:translateY(-4px)}.card-top-row{justify-content:space-between;align-items:center;width:100%;margin-bottom:8px;display:flex}.card-category-tag{text-transform:uppercase;color:#64748b;letter-spacing:.05em;font-size:10px;font-weight:700}.card-trend-pill{color:#059669;background:#10b9811f;border:1px solid #10b98147;border-radius:12px;align-items:center;gap:3px;padding:3px 8px;font-size:11px;font-weight:800;display:inline-flex}.school-emblem-badge{background:linear-gradient(145deg,#fff 0%,#f1f5f9 100%);border:1.5px solid #fffffff2;border-radius:18px;place-items:center;width:72px;height:72px;margin-bottom:12px;padding:10px;transition:transform .2s,box-shadow .2s;display:grid;position:relative;box-shadow:0 6px 16px #0f172a0f,inset 0 1px 1px #fff}.school-card:hover .school-emblem-badge{transform:scale(1.04);box-shadow:0 8px 20px #0284c71f,inset 0 1px 1px #fff}.school-svg{width:100%;height:100%}.school-card-info{width:100%}.school-header-row{justify-content:center;gap:6px;margin-bottom:6px;display:flex}.school-reg-pill{color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 7px;font-family:monospace;font-size:10px;font-weight:700}.school-location-pill{color:#64748b;font-size:11px;font-weight:500}.school-name{color:#0f172a;justify-content:center;align-items:center;min-height:38px;margin-bottom:10px;font-size:14.5px;font-weight:700;line-height:1.3;display:flex}.school-stats-bar{background:#f8fafcd9;border:1px solid #e2e8f0;border-radius:12px;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:10px;padding:7px 4px;display:grid;box-shadow:inset 1px 1px 3px #0f172a08}.stat-item .stat-num{color:#0f172a;font-size:12.5px;font-weight:800}.stat-item .stat-num.live-val{color:#059669}.stat-item .stat-lbl{color:#64748b;text-transform:uppercase;margin-top:1px;font-size:9px;font-weight:600}.school-cta-row{color:#0284c7;background:#0284c714;border:1px solid #0284c738;border-radius:8px;justify-content:center;align-items:center;gap:5px;padding:5px 12px;font-size:11.5px;font-weight:700;transition:all .15s;display:flex}.school-card:hover .school-cta-row{color:#fff;background:#0284c7;box-shadow:0 4px 12px #0284c740}.panel-bottom-row{grid-template-columns:1.8fr 1.2fr;gap:16px;width:100%;display:grid}.bottom-chart-card,.bottom-top-schools-card{background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px)saturate(180%);color:#0f172a;border-radius:20px;padding:20px 22px}.bottom-card-header{justify-content:space-between;align-items:flex-start;margin-bottom:14px;display:flex}.bottom-card-title{color:#0f172a;align-items:center;gap:6px;font-size:15px;font-weight:800;display:flex}.bottom-card-sub{color:#64748b;margin-top:2px;font-size:11.5px}.chart-legend-row{align-items:center;gap:12px;font-size:11px;font-weight:700;display:flex}.legend-pill{align-items:center;gap:5px;display:flex}.legend-dot-green{background:#10b981;border-radius:50%;width:7px;height:7px}.legend-dot-cyan{background:#06b6d4;border-radius:50%;width:7px;height:7px}.chart-svg-container{width:100%;height:190px;position:relative}.chart-svg{width:100%;height:100%;overflow:visible}.top-schools-list{flex-direction:column;gap:10px;display:flex}.top-school-item{background:#f8fafcd9;border:1px solid #e2e8f0;border-radius:12px;justify-content:space-between;align-items:center;padding:8px 12px;transition:transform .15s;display:flex;box-shadow:0 2px 5px #0f172a05}.top-school-item:hover{border-color:#0284c759;transform:translate(2px)}.top-school-left{align-items:center;gap:10px;display:flex}.top-school-avatar{background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;flex-shrink:0;place-items:center;width:38px;height:38px;padding:5px;display:grid;box-shadow:0 2px 6px #00000008}.top-school-name{color:#0f172a;font-size:13px;font-weight:700}.top-school-dept{color:#64748b;font-size:11px}.top-school-right{align-items:center;gap:8px;display:flex}.top-school-stat{color:#0284c7;background:#0284c714;border:1px solid #0284c733;border-radius:8px;padding:3px 8px;font-size:11.5px;font-weight:800}.btn-top-enter{color:#fff;cursor:pointer;background:#0284c7;border:1px solid #0284c7;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;transition:all .15s}.btn-top-enter:hover{background:#0ea5e9;border-color:#0ea5e9}.empty-state{text-align:center;background:var(--glass-surface);border:var(--glass-border);box-shadow:var(--glass-shadow);border-radius:20px;grid-column:1/-1;padding:50px 20px}.modal-overlay{z-index:200;place-items:center;padding:20px;display:none;position:fixed;inset:0}.modal-overlay.visible{display:grid}.modal-backdrop{-webkit-backdrop-filter:blur(12px);background:#0f172a59;position:absolute;inset:0}.modal-box{z-index:201;-webkit-backdrop-filter:blur(24px);color:#0f172a;background:#fffffff2;border:1px solid #fff;border-radius:22px;width:100%;max-width:620px;max-height:90vh;position:relative;overflow-y:auto;box-shadow:0 25px 60px #0f172a2e}.modal-close-btn{color:#475569;cursor:pointer;z-index:10;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:50%;place-items:center;width:32px;height:32px;font-size:16px;transition:all .15s;display:grid;position:absolute;top:16px;right:16px}.modal-close-btn:hover{color:#0f172a;background:#e2e8f0}.modal-banner{border-bottom:1px solid #e2e8f0;align-items:center;gap:18px;padding:24px 24px 18px;display:flex}.modal-school-emblem-badge{background:linear-gradient(145deg,#fff,#f1f5f9);border:1.5px solid #fffffff2;border-radius:18px;flex-shrink:0;place-items:center;width:72px;height:72px;padding:10px;display:grid;position:relative;box-shadow:0 6px 16px #0f172a0f}.modal-school-titles h2{color:#0f172a;font-size:19px;font-weight:800}.modal-dean{color:#64748b;margin-top:3px;font-size:12px}.modal-badge-row{flex-wrap:wrap;gap:6px;margin-bottom:6px;display:flex}.modal-reg-badge{color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:5px;padding:2px 7px;font-family:monospace;font-size:10.5px;font-weight:700}.modal-flag-badge{color:#475569;font-size:11.5px}.modal-verified-badge{color:#0284c7;background:#0284c71a;border:1px solid #0284c740;border-radius:10px;padding:2px 7px;font-size:10.5px;font-weight:600}.modal-body-content{flex-direction:column;gap:16px;padding:20px 24px 26px;display:flex}.code-access-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;flex-direction:column;gap:12px;padding:16px;display:flex;box-shadow:inset 1px 1px 3px #0f172a08}.code-access-header{justify-content:space-between;align-items:center;display:flex}.code-input-lg{letter-spacing:.08em;color:#0284c7;text-transform:uppercase;background:#fff;border:1.5px solid #cbd5e1;border-radius:10px;outline:none;width:100%;padding:10px 14px;font-family:monospace;font-size:16px;font-weight:700;transition:border-color .2s,box-shadow .2s}.code-input-lg:focus{border-color:#0284c7;box-shadow:0 0 0 3px #0284c71f}.code-verified-indicator{border-radius:6px;align-items:center;gap:5px;padding:3px 8px;font-size:11px;font-weight:700;display:flex}.code-verified-indicator.valid{color:#059669;background:#10b9811f;border:1px solid #10b98147}.code-verified-indicator.invalid{color:#dc2626;background:#ef44441f;border:1px solid #ef444447}.dept-selector-grid{grid-template-columns:repeat(2,1fr);gap:8px;display:grid}.dept-choice-card{color:#334155;cursor:pointer;background:#fff;border:1px solid #cbd5e1;border-radius:10px;align-items:center;gap:10px;padding:10px 12px;font-size:12.5px;font-weight:600;transition:all .15s;display:flex}.dept-choice-card:hover{color:#0f172a;background:#f1f5f9}.dept-choice-card.selected{color:#0284c7;background:#0284c71a;border-color:#0284c7;box-shadow:0 0 0 2px #0284c726}.form-label{color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;font-size:11px;font-weight:700}.form-input,.form-select,.form-textarea{color:#0f172a;background:#fff;border:1px solid #cbd5e1;border-radius:8px;outline:none;width:100%;padding:9px 12px;font-size:13.5px}.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:#0284c7}.modal-actions-bar{border-top:1px solid #e2e8f0;gap:10px;padding-top:14px;display:flex}.gemini-btn-primary{color:#fff;cursor:pointer;background:#0284c7;border:none;border-radius:10px;flex:1;justify-content:center;align-items:center;gap:8px;padding:12px 18px;font-size:14px;font-weight:700;text-decoration:none;transition:all .15s;display:flex;box-shadow:0 4px 12px #0284c740}.gemini-btn-primary:hover{background:#0ea5e9;transform:translateY(-1px)}.gemini-btn-secondary{color:#334155;cursor:pointer;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 20px;font-size:13.5px;font-weight:600;transition:all .15s}.gemini-btn-secondary:hover{color:#0f172a;background:#e2e8f0}.gemini-toast{z-index:300;opacity:0;pointer-events:none;background:#fff;border:1px solid #0284c7;border-radius:14px;align-items:center;gap:10px;padding:12px 18px;transition:all .3s;display:flex;position:fixed;bottom:24px;right:24px;transform:translateY(100px);box-shadow:0 10px 30px #0f172a26}.gemini-toast.visible{opacity:1;pointer-events:auto;transform:translateY(0)}.gemini-toast .toast-icon{color:#0284c7;font-size:18px}.gemini-toast .toast-text h5{color:#0f172a;font-size:13.5px;font-weight:700}.gemini-toast .toast-text p{color:#64748b;font-size:11.5px}@media (max-width:1200px){.schools-grid,.panel-dials-card{grid-template-columns:repeat(2,1fr)}.panel-bottom-row{grid-template-columns:1fr}}.sidebar-mobile-header{border-bottom:1px solid #e2e8f0cc;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:12px;display:none}.mobile-header-brand{align-items:center;gap:8px;display:flex}.mobile-brand-icon{font-size:18px}.mobile-brand-text{color:#0f172a;letter-spacing:.05em;font-size:13px;font-weight:800}.sidebar-close-btn{color:#475569;cursor:pointer;touch-action:manipulation;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;justify-content:center;align-items:center;width:32px;height:32px;font-size:14px;font-weight:700;transition:all .15s;display:flex}.sidebar-close-btn:hover,.sidebar-close-btn:active{color:#0f172a;background:#e2e8f0}.sidebar-backdrop{-webkit-backdrop-filter:blur(4px);z-index:1090;opacity:0;pointer-events:none;background:#0f172a99;transition:opacity .25s;display:none;position:fixed;inset:0}.sidebar-backdrop.active{opacity:1;pointer-events:auto;display:block}.class-notif-box{z-index:201;color:#0f172a;background:#fff;border:1px solid #e2e8f0;border-radius:20px;flex-direction:column;width:100%;max-width:620px;max-height:88vh;display:flex;position:relative;overflow:hidden;box-shadow:0 25px 60px #0f172a40}.notif-modal-header{background:linear-gradient(18deg,#f8fafc 0%,#fff 100%);border-bottom:1px solid #e2e8f0;justify-content:space-between;align-items:center;padding:18px 20px 14px;display:flex}.notif-header-left{align-items:center;gap:12px;display:flex}.notif-bell-icon{color:#0284c7;background:#0284c71f;border-radius:12px;justify-content:center;align-items:center;width:40px;height:40px;font-size:18px;display:flex}.notif-modal-header h3{color:#0f172a;margin-bottom:2px;font-size:16px;font-weight:800}.notif-subtitle{color:#64748b;align-items:center;gap:6px;font-size:12px;display:flex}.live-dot{background:#10b981;border-radius:50%;width:7px;height:7px;display:inline-block;box-shadow:0 0 6px #10b981}.notif-header-actions{align-items:center;gap:8px;display:flex}.notif-action-btn{color:#334155;cursor:pointer;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;transition:all .15s}.notif-action-btn:hover{color:#0f172a;background:#e2e8f0}.notif-close-btn{color:#64748b;cursor:pointer;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;justify-content:center;align-items:center;width:32px;height:32px;font-size:14px;transition:all .15s;display:flex}.notif-close-btn:hover{color:#ef4444;background:#ef44441a;border-color:#ef444433}.notif-controls-bar{background:#f8fafc;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;padding:10px 18px;display:flex}.notif-filter-tabs{flex-wrap:wrap;gap:6px;display:flex}.notif-tab{color:#475569;cursor:pointer;background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:5px 11px;font-size:11.5px;font-weight:700;transition:all .15s}.notif-tab:hover{color:#0f172a;background:#f1f5f9}.notif-tab.active{color:#fff;background:#0284c7;border-color:#0284c7;box-shadow:0 2px 8px #0284c74d}.notif-toggles{align-items:center;gap:8px;display:flex}.notif-toggle-btn{color:#475569;cursor:pointer;background:#fff;border:1px solid #cbd5e1;border-radius:8px;align-items:center;gap:4px;padding:5px 10px;font-size:11px;font-weight:700;transition:all .15s;display:flex}.notif-toggle-btn.muted{color:#94a3b8;background:#f1f5f9}.notif-broadcast-trigger{color:#0284c7;cursor:pointer;background:#0284c715;border:1px solid #0284c740;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;transition:all .15s}.notif-broadcast-trigger:hover{color:#fff;background:#0284c7}.notif-broadcast-box{background:#f0fdf4;border-bottom:1px solid #bbf7d0;flex-direction:column;gap:8px;padding:12px 18px;animation:.2s fadeIn;display:flex}.broadcast-box-header{justify-content:space-between;align-items:center;display:flex}.broadcast-title{color:#166534;font-size:12px;font-weight:800}.broadcast-close-btn{color:#166534;cursor:pointer;background:0 0;border:none;font-size:13px}.broadcast-inputs-row{flex-wrap:wrap;gap:8px;display:flex}.broadcast-select{color:#0f172a;background:#fff;border:1px solid #86efac;border-radius:8px;padding:7px 10px;font-size:11.5px;font-weight:600}.broadcast-input{color:#0f172a;background:#fff;border:1px solid #86efac;border-radius:8px;flex:1;min-width:180px;padding:7px 12px;font-size:12px}.broadcast-input:focus{border-color:#16a34a;outline:none;box-shadow:0 0 0 2px #16a34a33}.broadcast-send-btn{color:#fff;cursor:pointer;background:#16a34a;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;transition:all .15s}.broadcast-send-btn:hover{background:#15803d}.notif-list-container{-webkit-overflow-scrolling:touch;flex-direction:column;flex:1;gap:10px;max-height:52vh;padding:12px 18px;display:flex;overflow-y:auto}.notif-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;align-items:flex-start;gap:12px;padding:12px 14px;transition:all .2s;display:flex;position:relative}.notif-card:hover{background:#f8fafc;border-color:#cbd5e1;box-shadow:0 4px 12px #0f172a0d}.notif-card.unread{background:#f0f9ff40;border-left:3px solid #0284c7}.notif-card.dismissed{opacity:0;pointer-events:none;transform:translate(30px)}.notif-badge-pill{text-transform:uppercase;letter-spacing:.04em;border-radius:6px;flex-shrink:0;padding:2px 7px;font-size:9.5px;font-weight:800}.notif-card-body{flex:1;min-width:0}.notif-card-header{justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px;display:flex}.notif-card-title{color:#0f172a;font-size:13px;font-weight:700}.notif-card-time{color:#94a3b8;flex-shrink:0;font-size:10.5px}.notif-card-location{color:#0284c7;margin-bottom:4px;font-size:11px;font-weight:600}.notif-card-msg{color:#475569;margin-bottom:8px;font-size:12px;line-height:1.45}.notif-card-actions{align-items:center;gap:8px;display:flex}.notif-btn-link{color:#0284c7;cursor:pointer;background:#0284c715;border:1px solid #0284c733;border-radius:6px;align-items:center;gap:4px;padding:4px 10px;font-size:11px;font-weight:700;text-decoration:none;transition:all .15s;display:inline-flex}.notif-btn-link:hover{color:#fff;background:#0284c7}.notif-btn-dismiss{color:#94a3b8;cursor:pointer;background:0 0;border:none;border-radius:6px;padding:4px 8px;font-size:11px;transition:color .15s}.notif-btn-dismiss:hover{color:#ef4444}.notif-empty-state{text-align:center;color:#94a3b8;padding:36px 20px}.notif-empty-icon{margin-bottom:8px;font-size:32px}.notif-empty-text{font-size:13px;font-weight:600}.notif-modal-footer{background:#f8fafc;border-top:1px solid #e2e8f0;justify-content:space-between;align-items:center;padding:10px 18px;display:flex}.footer-hint{color:#64748b;font-size:11px}.notif-clear-btn{color:#64748b;cursor:pointer;background:0 0;border:1px solid #cbd5e1;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;transition:all .15s}.notif-clear-btn:hover{color:#0f172a;background:#e2e8f0}@media (max-width:960px){.sidebar-mobile-header{display:flex}.app-sidebar{z-index:1100;-webkit-overflow-scrolling:touch;background:#fff;width:290px;max-width:86vw;height:100vh;padding:16px;transition:transform .28s cubic-bezier(.16,1,.3,1);position:fixed;top:0;bottom:0;left:0;overflow-y:auto;transform:translate(-105%);box-shadow:12px 0 36px #0f172a4d;display:flex!important}.app-sidebar.mobile-open{transform:translate(0)}}@media (max-width:640px){.schools-grid,.panel-dials-card{grid-template-columns:1fr}.panel-filter-bar{flex-direction:column;align-items:stretch}.canvas-search-box{width:100%}}</style>
+    <script type="module" crossorigin src="./assets/schools-BZJk9JcE.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/motion-nW5Rdcz_.js">
+  </head>
+  <body>
+    <!-- Top Bar (Exact to Mockup: [X] GLOBALX / HOLOLAB XR, Search, Balance, User Pill) -->
+    <header class="global-topbar">
+      <div class="topbar-left">
+        <a href="index.html" class="topbar-brand">
+          <div class="topbar-brand-icon">⚗️</div>
+          <span class="topbar-brand-name">HOLOLAB XR</span>
+        </a>
+        <button class="topbar-search-trigger" id="topbarSearchTrigger" title="Search Institutions">🔍</button>
+        <button class="topbar-menu-trigger" id="topbarMenuTrigger" title="Navigation Menu" aria-label="Toggle Navigation Menu">☰</button>
+      </div>
+
+      <div class="topbar-right">
+        <button id="btnEnterCode" class="topbar-pill-btn" title="Enter class using registration code">
+          <span>🔑 Enter with Code</span>
+        </button>
+        <div class="topbar-coin-badge" title="Active XR Workstations in Network">
+          <span>🪙 316 Pods</span>
+        </div>
+        <button class="topbar-notif-btn" id="topbarNotifBtn" title="Class & Laboratory Notifications" aria-label="Class and Laboratory Notifications">
+          <span>🔔</span>
+          <span class="topbar-notif-badge" id="topbarNotifBadge">10</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Master Layout: Left Sidebar + Light Rounded Canvas Panel -->
+    <div class="app-shell">
+      <!-- Backdrop for Mobile Slide-Out Drawer -->
+      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+      <!-- Left Sidebar (Matching Mockup with Initials Avatar & Rounded Stacked Pills) -->
+      <aside class="app-sidebar">
+        <!-- Mobile Drawer Close Header (Visible on Mobile/Tablet) -->
+        <div class="sidebar-mobile-header">
+          <div class="mobile-header-brand">
+            <span class="mobile-brand-icon">⚗️</span>
+            <span class="mobile-brand-text">HOLOLAB XR</span>
+          </div>
+          <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close Navigation Menu">✕</button>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="sidebar-profile-card">
+          <div class="profile-avatar-circle">XR</div>
+          <div class="profile-title">Institutional Hub</div>
+          <div class="profile-status">
+            <span class="status-dot"></span>
+            <span>Online Network</span>
+          </div>
+        </div>
+
+        <!-- Stacked Rounded Neu-Glass Nav Pills (Exact to Mockup) -->
+        <nav class="sidebar-nav-container">
+          <a href="schools.html" class="nav-pill-item active">
+            <span class="pill-icon">⚡</span>
+            <span>Analytics Registry</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">📈</span>
+            <span>Performance</span>
+          </a>
+          <a href="index.html?dept=supermarket" class="nav-pill-item">
+            <span class="pill-icon">📦</span>
+            <span>Inventory</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">🔔</span>
+            <span>Alerts</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">🛒</span>
+            <span>Orders</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">💳</span>
+            <span>Active Carts</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">🏷️</span>
+            <span>Fixed Vouchers</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">🚚</span>
+            <span>Freight Offers</span>
+          </a>
+          <a href="index.html" class="nav-pill-item">
+            <span class="pill-icon">🌐</span>
+            <span>External Site</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">🤖</span>
+            <span>AI Sales Rep</span>
+          </a>
+          <a href="index.html?dept=physics" class="nav-pill-item">
+            <span class="pill-icon">🎨</span>
+            <span>Studio</span>
+          </a>
+          <a href="index.html?dept=chemistry" class="nav-pill-item">
+            <span class="pill-icon">📐</span>
+            <span>Design Studio</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">💬</span>
+            <span>AI Assistant</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">✉️</span>
+            <span>Messages</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item" id="sidebarEnterCodePill">
+            <span class="pill-icon">🛡️</span>
+            <span>Verification Code</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">📦</span>
+            <span>Packing</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">⚖️</span>
+            <span>Disputes</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">👥</span>
+            <span>Buyers</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">↩️</span>
+            <span>Requests</span>
+          </a>
+          <a href="schools.html" class="nav-pill-item">
+            <span class="pill-icon">⭐</span>
+            <span>Reviews</span>
+          </a>
+
+          <div class="sidebar-bottom-actions">
+            <button id="btnOpenRegister" class="btn-sidebar-upgrade">
+              <span>⭐ Upgrade Plan</span>
+            </button>
+            <a href="index.html" class="btn-sidebar-lab">
+              <span>🚪 Logout & Launch 3D</span>
+            </a>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Rounded Canvas (Light Panel with Embedded Dark Cards) -->
+      <main class="app-main-panel">
+        <!-- 1. Caution / Safety Compliance Banner -->
+        <div class="panel-caution-strip">
+          <div class="caution-content">
+            <span>⚠️ Caution: Institutional VR Compliance at 99.8%</span>
+            <span class="caution-tag">Certified</span>
+            <span class="caution-subtext">0 active penalty incidents. All 10 schools verified.</span>
+          </div>
+          <button class="caution-action-btn" id="cautionActionBtn">Share Overview ↗</button>
+        </div>
+
+        <!-- 2. Live Insights Header Card -->
+        <div class="panel-hero-card">
+          <div>
+            <div class="hero-tag">✦ LIVE NETWORK INSIGHTS</div>
+            <h1 class="hero-heading">Registered Institutions Dashboard</h1>
+            <p class="hero-sub">Real-time overview of accredited science academies & WebXR laboratory metrics.</p>
+          </div>
+          <div class="hero-actions">
+            <button id="btnOpenRegisterHero" class="btn-hero-action primary">
+              <span>+ Register School</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Four Circular Radial Dial Gauges Card (Exact 2x2 Grid from User Screenshot) -->
+        <div class="panel-dials-card">
+          <!-- Dial 1: Schools Registry -->
+          <div class="dial-item">
+            <div class="dial-title">SCHOOLS REGISTRY</div>
+            <div class="dial-svg-wrap">
+              <svg class="dial-svg" viewBox="0 0 100 100">
+                <circle class="dial-circle-bg" cx="50" cy="50" r="41" />
+                <circle class="dial-circle-fill" cx="50" cy="50" r="41" stroke="#00f0ff" stroke-dasharray="257.6" stroke-dashoffset="65" style="filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));" />
+              </svg>
+              <div class="dial-center-content">
+                <span class="dial-val" id="dialSchoolsVal">10</span>
+                <span class="dial-sub">SCHOOLS</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dial 2: Total Enrolled -->
+          <div class="dial-item">
+            <div class="dial-title">TOTAL ENROLLED</div>
+            <div class="dial-svg-wrap">
+              <svg class="dial-svg" viewBox="0 0 100 100">
+                <circle class="dial-circle-bg" cx="50" cy="50" r="41" />
+                <circle class="dial-circle-fill" cx="50" cy="50" r="41" stroke="#0284c7" stroke-dasharray="257.6" stroke-dashoffset="85" style="filter: drop-shadow(0 0 8px rgba(2, 132, 199, 0.6));" />
+              </svg>
+              <div class="dial-center-content">
+                <span class="dial-val" id="dialStudentsVal">6.4k</span>
+                <span class="dial-sub">STUDENTS</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dial 3: VR Workstations -->
+          <div class="dial-item">
+            <div class="dial-title">VR WORKSTATIONS</div>
+            <div class="dial-svg-wrap">
+              <svg class="dial-svg" viewBox="0 0 100 100">
+                <circle class="dial-circle-bg" cx="50" cy="50" r="41" />
+                <circle class="dial-circle-fill" cx="50" cy="50" r="41" stroke="#a855f7" stroke-dasharray="257.6" stroke-dashoffset="52" style="filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6));" />
+              </svg>
+              <div class="dial-center-content">
+                <span class="dial-val" id="dialPodsVal">316</span>
+                <span class="dial-sub">STATIONS</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dial 4: Live in Lab -->
+          <div class="dial-item">
+            <div class="dial-title">LIVE IN LAB</div>
+            <div class="dial-svg-wrap">
+              <svg class="dial-svg" viewBox="0 0 100 100">
+                <circle class="dial-circle-bg" cx="50" cy="50" r="41" />
+                <circle class="dial-circle-fill" cx="50" cy="50" r="41" stroke="#10b981" stroke-dasharray="257.6" stroke-dashoffset="100" style="filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));" />
+              </svg>
+              <div class="dial-center-content">
+                <span class="dial-val" id="dialLiveVal" style="color: #10b981;">180</span>
+                <span class="dial-sub">ACTIVE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls: Filters & Search inside Panel -->
+        <div class="panel-filter-bar">
+          <div class="canvas-filter-pills">
+            <button class="canvas-pill active" data-cat="all">All (10)</button>
+            <button class="canvas-pill" data-cat="stem">Quantum & STEM</button>
+            <button class="canvas-pill" data-cat="medical">Biomedical</button>
+            <button class="canvas-pill" data-cat="chemistry">Chemistry</button>
+            <button class="canvas-pill" data-cat="international">Global</button>
+          </div>
+
+          <div class="canvas-search-box">
+            <span class="canvas-search-ico">🔍</span>
+            <input
+              type="text"
+              id="schoolSearch"
+              class="canvas-search-input"
+              placeholder="Search institutions..."
+              autocomplete="off"
+            />
+          </div>
+        </div>
+
+        <!-- 4. Neu-Glass Schools Grid (Exact 4 Columns x 2 Rows Layout) -->
+        <div class="schools-grid" id="schoolsGrid">
+          <!-- Dynamically populated by /src/schools.ts -->
+        </div>
+
+        <!-- 5. Bottom Section: Simulation Trend Area Chart + Top Performing Academies (Exact to Mockup) -->
+        <div class="panel-bottom-row">
+          <!-- Left: Glowing Green Area Trend Chart ("Sales Trend" in Mockup) -->
+          <div class="bottom-chart-card">
+            <div class="bottom-card-header">
+              <div>
+                <div class="bottom-card-title">📈 Simulation & Lab Trend</div>
+                <div class="bottom-card-sub">Last 30 days active student & workstation throughput</div>
+              </div>
+              <div class="chart-legend-row">
+                <div class="legend-pill">
+                  <span class="legend-dot-green"></span>
+                  <span style="color: #34d399;">Simulations (k)</span>
+                </div>
+                <div class="legend-pill">
+                  <span class="legend-dot-cyan"></span>
+                  <span style="color: #7dd3fc;">Visits</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SVG Glowing Curve Area Chart -->
+            <div class="chart-svg-container">
+              <svg class="chart-svg" viewBox="0 0 540 180" preserveAspectRatio="none">
+                <defs>
+                  <!-- Emerald green gradient area fill -->
+                  <linearGradient id="curveGreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#10b981" stop-opacity="0.45" />
+                    <stop offset="50%" stop-color="#10b981" stop-opacity="0.18" />
+                    <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
+                  </linearGradient>
+                  <!-- Neon glow filter -->
+                  <filter id="neonGreenGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#10b981" flood-opacity="0.8" />
+                  </filter>
+                </defs>
+
+                <!-- Horizontal Dashed Grid Lines -->
+                <line x1="45" y1="20" x2="520" y2="20" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+                <text x="35" y="24" fill="#64748b" font-size="9" text-anchor="end" font-family="monospace">10.0k</text>
+
+                <line x1="45" y1="55" x2="520" y2="55" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+                <text x="35" y="59" fill="#64748b" font-size="9" text-anchor="end" font-family="monospace">8.0k</text>
+
+                <line x1="45" y1="90" x2="520" y2="90" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+                <text x="35" y="94" fill="#64748b" font-size="9" text-anchor="end" font-family="monospace">6.0k</text>
+
+                <line x1="45" y1="125" x2="520" y2="125" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+                <text x="35" y="129" fill="#64748b" font-size="9" text-anchor="end" font-family="monospace">4.0k</text>
+
+                <line x1="45" y1="160" x2="520" y2="160" stroke="rgba(255,255,255,0.08)" />
+                <text x="35" y="163" fill="#64748b" font-size="9" text-anchor="end" font-family="monospace">0.0k</text>
+
+                <!-- Curved Smooth Area Fill (Exact Bell Peak from Mockup) -->
+                <path
+                  d="M 45,160 
+                     C 140,160 210,150 250,90 
+                     C 275,52 295,30 320,30 
+                     C 345,30 365,55 390,95 
+                     C 430,150 480,160 520,160 
+                     Z"
+                  fill="url(#curveGreenGrad)"
+                />
+
+                <!-- Stroke Line with Green Neon Glow -->
+                <path
+                  d="M 45,160 
+                     C 140,160 210,150 250,90 
+                     C 275,52 295,30 320,30 
+                     C 345,30 365,55 390,95 
+                     C 430,150 480,160 520,160"
+                  fill="none"
+                  stroke="#10b981"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  filter="url(#neonGreenGlow)"
+                />
+
+                <!-- Peak Glowing Dot -->
+                <circle cx="320" cy="30" r="5" fill="#ffffff" stroke="#10b981" stroke-width="2.5" filter="url(#neonGreenGlow)" />
+                <circle cx="320" cy="30" r="9" fill="none" stroke="#10b981" stroke-width="1" opacity="0.6" />
+                <text x="320" y="20" fill="#34d399" font-size="10" font-weight="800" text-anchor="middle" font-family="sans-serif">9.4k Peak</text>
+
+                <!-- Dates along Bottom Axis -->
+                <text x="60" y="174" fill="#64748b" font-size="9" text-anchor="middle">Oct 05</text>
+                <text x="180" y="174" fill="#64748b" font-size="9" text-anchor="middle">Oct 12</text>
+                <text x="320" y="174" fill="#94a3b8" font-size="9" font-weight="700" text-anchor="middle">Oct 19 (Peak)</text>
+                <text x="420" y="174" fill="#64748b" font-size="9" text-anchor="middle">Oct 26</text>
+                <text x="500" y="174" fill="#64748b" font-size="9" text-anchor="middle">Nov 02</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Right: Top Performing Institutions ("Top Products" in Mockup) -->
+          <div class="bottom-top-schools-card">
+            <div class="bottom-card-header">
+              <div>
+                <div class="bottom-card-title">🏆 Top Performing Institutions</div>
+                <div class="bottom-card-sub">Ranked by weekly active simulation hours</div>
+              </div>
+            </div>
+
+            <div class="top-schools-list" id="topSchoolsList">
+              <!-- Item 1 -->
+              <div class="top-school-item" data-code="REG-2026-UK-01">
+                <div class="top-school-left">
+                  <div class="top-school-avatar" style="border-color: #4285f4;">
+                    <span style="font-size: 16px;">🧬</span>
+                  </div>
+                  <div>
+                    <div class="top-school-name">Cambridge Biophysics</div>
+                    <div class="top-school-dept">🇬🇧 Biology Hall 201</div>
+                  </div>
+                </div>
+                <div class="top-school-right">
+                  <span class="top-school-stat">1.8k hrs</span>
+                  <button class="btn-top-enter" onclick="window.enterQuickSchool('REG-2026-UK-01')">Enter</button>
+                </div>
+              </div>
+
+              <!-- Item 2 -->
+              <div class="top-school-item" data-code="REG-2026-US-02">
+                <div class="top-school-left">
+                  <div class="top-school-avatar" style="border-color: #00f0ff;">
+                    <span style="font-size: 16px;">⚡</span>
+                  </div>
+                  <div>
+                    <div class="top-school-name">Apex Horizon STEM</div>
+                    <div class="top-school-dept">🇺🇸 Physics Optics 101</div>
+                  </div>
+                </div>
+                <div class="top-school-right">
+                  <span class="top-school-stat">1.4k hrs</span>
+                  <button class="btn-top-enter" onclick="window.enterQuickSchool('REG-2026-US-02')">Enter</button>
+                </div>
+              </div>
+
+              <!-- Item 3 -->
+              <div class="top-school-item" data-code="REG-2026-JP-03">
+                <div class="top-school-left">
+                  <div class="top-school-avatar" style="border-color: #d96570;">
+                    <span style="font-size: 16px;">☀️</span>
+                  </div>
+                  <div>
+                    <div class="top-school-name">Kyoto Imperial High</div>
+                    <div class="top-school-dept">🇯🇵 Laser Photonics</div>
+                  </div>
+                </div>
+                <div class="top-school-right">
+                  <span class="top-school-stat">1.1k hrs</span>
+                  <button class="btn-top-enter" onclick="window.enterQuickSchool('REG-2026-JP-03')">Enter</button>
+                </div>
+              </div>
+
+              <!-- Item 4 -->
+              <div class="top-school-item" data-code="REG-2026-CA-04">
+                <div class="top-school-left">
+                  <div class="top-school-avatar" style="border-color: #ef4444;">
+                    <span style="font-size: 16px;">🫀</span>
+                  </div>
+                  <div>
+                    <div class="top-school-name">St. Jude Biomedical</div>
+                    <div class="top-school-dept">🇨🇦 3D Organ Anatomy</div>
+                  </div>
+                </div>
+                <div class="top-school-right">
+                  <span class="top-school-stat">940 hrs</span>
+                  <button class="btn-top-enter" onclick="window.enterQuickSchool('REG-2026-CA-04')">Enter</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Student Registration Code & Class Entry Modal -->
+    <div class="modal-overlay" id="schoolModal" aria-modal="true" role="dialog">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-box">
+        <button class="modal-close-btn" id="modalClose" aria-label="Close modal">✕</button>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+
+    <!-- New School Registration Modal -->
+    <div class="modal-overlay" id="registerModal" aria-modal="true" role="dialog">
+      <div class="modal-backdrop" id="registerBackdrop"></div>
+      <div class="modal-box">
+        <button class="modal-close-btn" id="registerClose" aria-label="Close modal">✕</button>
+        
+        <div class="modal-banner" style="background: rgba(2, 132, 199, 0.08);">
+          <div class="modal-school-emblem-badge" style="display:grid;place-items:center;font-size:28px;color:#0284c7;">
+            🏛️
+          </div>
+          <div class="modal-school-titles">
+            <div class="modal-badge-row">
+              <span class="modal-verified-badge">✦ Registration</span>
+              <span class="modal-reg-badge">Auto Assigned ID</span>
+            </div>
+            <h2>Register New Institution</h2>
+            <div class="modal-dean">Enroll academy or school into the HoloLab XR Spatial Network</div>
+          </div>
+        </div>
+
+        <form id="registerForm" class="modal-body-content">
+          <div class="reg-form-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            <div style="grid-column: 1 / -1;">
+              <label class="form-label" for="regSchoolName">School Name *</label>
+              <input type="text" id="regSchoolName" class="form-input" placeholder="e.g. Oxford Science Academy" required />
+            </div>
+
+            <div>
+              <label class="form-label" for="regShortName">Short Name *</label>
+              <input type="text" id="regShortName" class="form-input" placeholder="e.g. Oxford Academy" required />
+            </div>
+
+            <div>
+              <label class="form-label" for="regCategory">Category *</label>
+              <select id="regCategory" class="form-select" required>
+                <option value="stem">Quantum & STEM</option>
+                <option value="medical">Biomedical & Anatomy</option>
+                <option value="chemistry">Chemical Sciences</option>
+                <option value="international">Global Alliances</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="form-label" for="regCountry">Country & Flag *</label>
+              <select id="regCountry" class="form-select" required>
+                <option value="United Kingdom|🇬🇧">United Kingdom 🇬🇧</option>
+                <option value="United States|🇺🇸">United States 🇺🇸</option>
+                <option value="Nigeria|🇳🇬">Nigeria 🇳🇬</option>
+                <option value="Canada|🇨🇦">Canada 🇨🇦</option>
+                <option value="Germany|🇩🇪">Germany 🇩🇪</option>
+                <option value="Japan|🇯🇵">Japan 🇯🇵</option>
+                <option value="Singapore|🇸🇬">Singapore 🇸🇬</option>
+                <option value="Switzerland|🇨🇭">Switzerland 🇨🇭</option>
+                <option value="Australia|🇦🇺">Australia 🇦🇺</option>
+                <option value="Global Campus|🌐">Global Campus 🌐</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="form-label" for="regCity">City *</label>
+              <input type="text" id="regCity" class="form-input" placeholder="e.g. Oxford" required />
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+              <label class="form-label" for="regSpecialization">Specialization *</label>
+              <input type="text" id="regSpecialization" class="form-input" placeholder="e.g. Molecular Genetics & Optics" required />
+            </div>
+
+            <div>
+              <label class="form-label" for="regDean">Director / Dean *</label>
+              <input type="text" id="regDean" class="form-input" placeholder="e.g. Prof. Arthur Vance" required />
+            </div>
+
+            <div>
+              <label class="form-label" for="regStudents">Students</label>
+              <input type="number" id="regStudents" class="form-input" value="450" min="10" />
+            </div>
+
+            <div>
+              <label class="form-label" for="regPods">VR Pods</label>
+              <input type="number" id="regPods" class="form-input" value="24" min="1" />
+            </div>
+
+            <div>
+              <label class="form-label" for="regCrestSymbol">Emblem Symbol</label>
+              <select id="regCrestSymbol" class="form-select">
+                <option value="dna">DNA Double Helix</option>
+                <option value="atom">Atomic Orbitals</option>
+                <option value="prism">Optical Prism</option>
+                <option value="flask">Chemistry Flask</option>
+                <option value="heart">Medical Heart</option>
+                <option value="chip">Neural Microchip</option>
+              </select>
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+              <label class="form-label">Licensed Laboratories</label>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cbd5e1;cursor:pointer;"><input type="checkbox" name="regLabs" value="Chemistry Lab (Hall 304)" checked /> ⚗️ Chemistry</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cbd5e1;cursor:pointer;"><input type="checkbox" name="regLabs" value="Biology Pavilion (Hall 201)" checked /> 🧬 Biology</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cbd5e1;cursor:pointer;"><input type="checkbox" name="regLabs" value="Physics Institute (Hall 101)" checked /> ⚡ Physics</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cbd5e1;cursor:pointer;"><input type="checkbox" name="regLabs" value="Campus Science Supermarket" checked /> 🛒 Store</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions-bar">
+            <button type="submit" class="gemini-btn-primary" id="btnSubmitRegister">
+              <span>✦ Complete Registration</span>
+            </button>
+            <button type="button" class="gemini-btn-secondary" id="registerCancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Class Notifications Control Modal -->
+    <div class="modal-overlay" id="classNotifModal" aria-modal="true" role="dialog">
+      <div class="modal-backdrop" id="classNotifBackdrop"></div>
+      <div class="modal-box class-notif-box">
+        <div class="notif-modal-header">
+          <div class="notif-header-left">
+            <div class="notif-bell-icon">🔔</div>
+            <div>
+              <h3 id="notifModalTitle">Class & Lab Notifications</h3>
+              <p class="notif-subtitle"><span class="live-dot"></span> <span id="notifActiveCount">10</span> Active Alerts across Laboratories</p>
+            </div>
+          </div>
+          <div class="notif-header-actions">
+            <button class="notif-action-btn" id="btnMarkAllRead" title="Mark all alerts as read">
+              <span>✓ Mark All Read</span>
+            </button>
+            <button class="notif-close-btn" id="classNotifClose" aria-label="Close Notifications">✕</button>
+          </div>
+        </div>
+
+        <!-- Notification Controls Bar (Filter Tabs + Sound Toggle + Quick Broadcast) -->
+        <div class="notif-controls-bar">
+          <div class="notif-filter-tabs">
+            <button class="notif-tab active" data-filter="all">All (<span id="countTabAll">10</span>)</button>
+            <button class="notif-tab" data-filter="urgent">🔴 Urgent (<span id="countTabUrgent">3</span>)</button>
+            <button class="notif-tab" data-filter="classes">🧪 Classes & Labs (<span id="countTabClasses">4</span>)</button>
+            <button class="notif-tab" data-filter="store">🛒 Store & Orders (<span id="countTabStore">3</span>)</button>
+          </div>
+          <div class="notif-toggles">
+            <button class="notif-toggle-btn" id="btnToggleSound" title="Toggle Audio Notification Chime">
+              <span id="soundIcon">🔊</span> <span id="soundLabel">Sound: ON</span>
+            </button>
+            <button class="notif-broadcast-trigger" id="btnOpenBroadcast" title="Send announcement to all students">
+              <span>📢 Send Notice</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Broadcast Announcement Composer Box (Collapsible / Expandable) -->
+        <div class="notif-broadcast-box" id="notifBroadcastBox" style="display: none;">
+          <div class="broadcast-box-header">
+            <span class="broadcast-title">📢 Broadcast New Class Announcement</span>
+            <button type="button" class="broadcast-close-btn" id="btnCloseBroadcast">✕</button>
+          </div>
+          <div class="broadcast-inputs-row">
+            <select id="broadcastTarget" class="broadcast-select">
+              <option value="Chemistry Lab (Hall 304)">⚗️ Chemistry Lab (Hall 304)</option>
+              <option value="Biology Pavilion (Hall 201)">🧬 Biology Pavilion (Hall 201)</option>
+              <option value="Physics Institute (Hall 101)">⚡ Physics Institute (Hall 101)</option>
+              <option value="All Active Workstations">🌐 All Active Workstations</option>
+            </select>
+            <select id="broadcastPriority" class="broadcast-select" style="max-width: 140px;">
+              <option value="urgent">🔴 Urgent</option>
+              <option value="classes" selected>🧪 Class Notice</option>
+              <option value="store">🛒 Store Alert</option>
+            </select>
+            <input type="text" id="broadcastMsgInput" class="broadcast-input" placeholder="Type notice (e.g. 'Quiz begins in 5 mins. Use Code: 4921')" />
+            <button type="button" id="btnSendBroadcast" class="broadcast-send-btn">Send Notice</button>
+          </div>
+        </div>
+
+        <!-- Scrollable Notifications List -->
+        <div class="notif-list-container" id="notifListContainer">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div class="notif-modal-footer">
+          <span class="footer-hint">Notifications synchronize across all active classroom WebXR headsets & instructor stations.</span>
+          <button class="notif-clear-btn" id="btnClearAllNotifs">Clear Dismissed</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="gemini-toast" id="geminiToast">
+      <div class="toast-icon">✦</div>
+      <div class="toast-text">
+        <h5 id="toastTitle">Success</h5>
+        <p id="toastMessage">Institution updated.</p>
+      </div>
+    </div>
+
+  </body>
+</html>
