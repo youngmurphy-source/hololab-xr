@@ -2081,11 +2081,7 @@ export function buildBiologyLab(): BiologyLabInstance {
     return true;
   };
 
-  let totalTime = 0;
   const update = (dt: number, _camera?: THREE.Camera) => {
-    totalTime += dt;
-    hologram.update(dt, totalTime);
-
     let dirty = false;
     // Smooth zoom interpolation
     if (Math.abs(wbHover.targetHoverZoomMult - wbHover.hoverZoomMult) > 0.005) {
@@ -2109,6 +2105,7 @@ export function buildBiologyLab(): BiologyLabInstance {
       renderBiologyCenterBoard(centerCtx, centerCanvas.width, centerCanvas.height, console.getState(), wbHover);
       centerTexture.needsUpdate = true;
     }
+    hologram.update(dt, _camera);
   };
 
   return {

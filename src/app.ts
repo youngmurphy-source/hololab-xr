@@ -344,13 +344,6 @@ export class App {
         (uv) => this.bioLab.handleBoardClick(uv ?? null),
         (uv) => this.bioLab.handleBoardPointerMove?.(uv ?? null),
       );
-      if (this.bioLab.hologram) {
-        for (const m of this.bioLab.hologram.interactiveMeshes) {
-          this.lab.addPressable(m, () => {
-            this.bioLab.hologram.handlePointerDown(m);
-          });
-        }
-      }
     }
     try {
       this.topicUpdate = def.build(this.lab, {
@@ -471,6 +464,232 @@ export class App {
     this.refreshPanel();
   }
 
+  /**
+   * Realistic 3D Simulation Execution for "Quick Show" Demonstration Mode.
+   * When any task / checkbox is clicked or marked, HoloLab physically executes
+   * authentic reagents, color transitions, precipitates, bubbles, audio, and
+   * educational telemetry in the 3D lab environment.
+   */
+  public performStepRealistically(stepId: string) {
+    if (!this.topic) return;
+    const topicId = this.topic.id;
+
+    // A. Qualitative Analysis (WAEC, NECO, Cambridge IGCSE cations & anions)
+    if (topicId === 'qualitativeAnalysis') {
+      const testTubes = this.lab.vessels.filter((v) => !v.infinite && !v.sink);
+      const tube = testTubes[0];
+
+      if (stepId === 'sample') {
+        if (tube) {
+          tube.mix = {
+            volume: 1.8,
+            amounts: { 'ion:cu': 0.012, 'ion:so4': 0.012 },
+          };
+          tube.updateLook();
+          audio.pour();
+          this.say('⚡ Quick Show: Dispensed 1.8 mL Unknown Sample A (Cu²⁺/SO₄²⁻ azure blue) into Test Tube 1.', 5);
+        }
+        this.markDone('sample');
+        return;
+      }
+
+      if (stepId === 'reagent') {
+        if (tube) {
+          if (tube.mix.volume < 0.5) {
+            tube.mix = { volume: 1.8, amounts: { 'ion:cu': 0.012, 'ion:so4': 0.012 } };
+          }
+          tube.mix.amounts['reagent:naoh'] = 0.003;
+          tube.mix.volume += 0.2;
+          tube.updateLook();
+          audio.drip();
+          this.say('⚡ Quick Show: Added 3 drops 2.0 M NaOH testing reagent dropwise into the solution.', 5);
+        }
+        this.markDone('reagent');
+        return;
+      }
+
+      if (stepId === 'precipitate') {
+        if (tube) {
+          if (tube.mix.volume < 0.5) {
+            tube.mix = { volume: 1.8, amounts: { 'ion:cu': 0.012, 'ion:so4': 0.012 } };
+          }
+          tube.mix.amounts['reagent:naoh'] = 0.006;
+          tube.bubbleRate = 8;
+          tube.updateLook();
+          audio.fizz();
+          this.say('⚡ Quick Show: Insoluble light blue gelatinous precipitate Cu(OH)₂ formed: Cu²⁺ + 2OH⁻ → Cu(OH)₂↓.', 5);
+        }
+        this.markDone('precipitate');
+        return;
+      }
+
+      if (stepId === 'excess') {
+        if (tube) {
+          if (tube.mix.volume < 0.5) {
+            tube.mix = { volume: 1.8, amounts: { 'ion:cu': 0.012, 'ion:so4': 0.012 } };
+          }
+          tube.mix.amounts['reagent:nh3'] = 0.040;
+          tube.mix.volume += 1.6;
+          tube.updateLook();
+          audio.pour();
+          this.say('⚡ Quick Show: Added excess NH₃(aq) -> Precipitate dissolves into deep royal blue [Cu(NH₃)₄]²⁺ complex!', 5);
+        }
+        this.markDone('excess');
+        return;
+      }
+
+      if (stepId === 'identify') {
+        audio.success();
+        this.say('⚡ Quick Show: Verified Net Ionic Equation: Cu²⁺(aq) + 2OH⁻(aq) → Cu(OH)₂↓. Confirmed Cation: Cu²⁺, Anion: SO₄²⁻.', 6);
+        this.markDone('identify');
+        return;
+      }
+    }
+
+    // B. Acid-Base Indicators
+    if (topicId === 'indicators') {
+      const beakers = this.lab.vessels.filter((v) => !v.infinite && !v.sink);
+      const b1 = beakers[0];
+      const b2 = beakers[1] ?? beakers[0];
+
+      if (stepId === 'acid') {
+        if (b1) {
+          b1.mix = { volume: 25, amounts: { acid: 0.0025 } };
+          b1.updateLook();
+          audio.pour();
+          this.say('⚡ Quick Show: Poured 25 mL 0.10 M Hydrochloric Acid (HCl) into 100 mL beaker.', 5);
+        }
+        this.markDone('acid');
+        return;
+      }
+      if (stepId === 'acidInd') {
+        if (b1) {
+          if (b1.mix.volume < 5) b1.mix = { volume: 25, amounts: { acid: 0.0025 } };
+          b1.mix.amounts['ind:phenol'] = 1;
+          b1.updateLook();
+          audio.drip();
+          this.say('⚡ Quick Show: Added 3 drops Phenolphthalein indicator to acid (remains crystal clear).', 5);
+        }
+        this.markDone('acidInd');
+        return;
+      }
+      if (stepId === 'baseInd') {
+        if (b2) {
+          b2.mix = { volume: 25, amounts: { acid: -0.0025, 'ind:phenol': 1 } };
+          b2.updateLook();
+          audio.drip();
+          this.say('⚡ Quick Show: Added Phenolphthalein indicator to 0.10 M NaOH -> turned vivid magenta!', 5);
+        }
+        this.markDone('baseInd');
+        return;
+      }
+      if (stepId === 'ph') {
+        audio.ping();
+        this.say('⚡ Quick Show: Calibrated glass electrode digital pH probe dipped into acid: measured pH = 1.0.', 5);
+        this.markDone('ph');
+        return;
+      }
+      if (stepId === 'neutral') {
+        if (b1) {
+          b1.mix = { volume: 50, amounts: { acid: 0, 'ind:universal': 1 } };
+          b1.updateLook();
+          audio.pour();
+          audio.success();
+          this.say('⚡ Quick Show: Neutralisation completed! Exact equivalence point pH = 7.00 reached.', 6);
+        }
+        this.markDone('neutral');
+        return;
+      }
+    }
+
+    // C. Hydrogen Gas Lab
+    if (topicId === 'hydrogen') {
+      const vessels = this.lab.vessels.filter((v) => !v.infinite && !v.sink);
+      const flask = vessels[0];
+      if (stepId === 'acid') {
+        if (flask) {
+          flask.mix = { volume: 30, amounts: { acid: 0.03 } };
+          flask.updateLook();
+          audio.pour();
+          this.say('⚡ Quick Show: Added 30 mL dilute Hydrochloric Acid to conical flask.', 5);
+        }
+        this.markDone('acid');
+        return;
+      }
+      if (stepId === 'zinc') {
+        if (flask) {
+          flask.bubbleRate = 50;
+          audio.plop();
+          audio.fizz();
+          this.say('⚡ Quick Show: Added granulated zinc: Zn + 2HCl → ZnCl₂ + H₂↑ (vigorous bubbling).', 5);
+        }
+        this.markDone('zinc');
+        return;
+      }
+      if (stepId === 'collect') {
+        audio.drip();
+        this.say('⚡ Quick Show: Collected pure Hydrogen gas in inverted test tube by water displacement.', 5);
+        this.markDone('collect');
+        return;
+      }
+      if (stepId === 'pop') {
+        audio.plop();
+        audio.ping();
+        audio.success();
+        this.say('⚡ Quick Show: Lighted splint ignited hydrogen with characteristic squeaky "POP"!', 6);
+        this.markDone('pop');
+        return;
+      }
+    }
+
+    // D. Oxygen Gas Lab
+    if (topicId === 'oxygen') {
+      const vessels = this.lab.vessels.filter((v) => !v.infinite && !v.sink);
+      const flask = vessels[0];
+      if (stepId === 'h2o2') {
+        if (flask) {
+          flask.mix = { volume: 25, amounts: { h2o2: 0.025 } };
+          flask.updateLook();
+          audio.pour();
+          this.say('⚡ Quick Show: Added 25 mL Hydrogen Peroxide (H₂O₂) solution.', 5);
+        }
+        this.markDone('h2o2');
+        return;
+      }
+      if (stepId === 'mno2') {
+        if (flask) {
+          flask.bubbleRate = 60;
+          audio.plop();
+          audio.fizz();
+          this.say('⚡ Quick Show: Added MnO₂ catalyst: 2H₂O₂ → 2H₂O + O₂↑ (rapid oxygen evolution).', 5);
+        }
+        this.markDone('mno2');
+        return;
+      }
+      if (stepId === 'collect') {
+        audio.drip();
+        this.say('⚡ Quick Show: Collected high-purity Oxygen gas (O₂) in gas collection jar.', 5);
+        this.markDone('collect');
+        return;
+      }
+      if (stepId === 'reignite') {
+        audio.plop();
+        audio.success();
+        this.say('⚡ Quick Show: Glowing wooden splint plunged into gas jar relit with a brilliant flame!', 6);
+        this.markDone('reignite');
+        return;
+      }
+    }
+
+    // E. General Fallback for All Other Topics
+    audio.click();
+    audio.success();
+    const sDef = this.topic.steps?.find((s) => s.id === stepId);
+    const label = sDef ? t(sDef.key) : stepId;
+    this.say(`⚡ Quick Show: Demonstrated and completed "${label}"!`, 4);
+    this.markDone(stepId);
+  }
+
   /** The on-screen task list (screens only; in VR the wall board shows it). */
   private fillTasks() {
     if (!this.topic) return;
@@ -478,24 +697,68 @@ export class App {
     const doneCount = steps.filter((s) => this.done.has(s.id)).length;
     $('taskTitle').textContent = t(this.topic.title);
     $('taskCount').textContent = `${doneCount}/${steps.length}`;
+    const taskBadge = document.getElementById('overlayBarTasksBadge');
+    if (taskBadge) {
+      taskBadge.textContent = `📋 ${doneCount}/${steps.length} Tasks`;
+    }
     const list = $('taskList');
     list.innerHTML = '';
     const next = steps.find((s) => !this.done.has(s.id));
     for (const s of steps) {
+      const isDone = this.done.has(s.id);
       const li = document.createElement('li');
       li.setAttribute('data-step', s.id);
+      li.className = 'task-row' + (isDone ? ' done' : '') + (s === next ? ' next' : '');
+
+      // 1. Interactive Checkbox Button
+      const checkBtn = document.createElement('button');
+      checkBtn.type = 'button';
+      checkBtn.className = 'task-checkbox';
+      checkBtn.title = '⚡ Click to mark & show realistic demonstration';
+      checkBtn.setAttribute('aria-label', `Demonstrate and mark ${t(s.key)}`);
+      checkBtn.innerHTML = `
+        <svg viewBox="0 0 16 16" fill="none" class="task-check-icon">
+          <path d="M3.2 8.2L6.4 11.4L13 4.2" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `;
+
+      // 2. Task Text & Quick Show Tag
+      const content = document.createElement('div');
+      content.className = 'task-content';
       const text = document.createElement('span');
+      text.className = 'task-title';
       text.textContent = t(s.key);
-      li.appendChild(text);
-      if (this.done.has(s.id)) li.className = 'done';
-      else if (s === next) {
-        li.className = 'next';
+      content.appendChild(text);
+
+      const quickBadge = document.createElement('span');
+      quickBadge.className = 'task-quick-badge';
+      quickBadge.textContent = isDone ? '✓ Completed' : '⚡ Quick Show';
+      content.appendChild(quickBadge);
+
+      li.appendChild(checkBtn);
+      li.appendChild(content);
+
+      // Click on either checkbox or row triggers Quick Show demonstration & mark
+      const handleTrigger = (e: MouseEvent) => {
+        if ((e.target as HTMLElement).closest('.hint-btn')) return;
+        this.performStepRealistically(s.id);
+        triggerCelebrationBounce(li);
+      };
+
+      checkBtn.addEventListener('click', handleTrigger);
+      content.addEventListener('click', handleTrigger);
+      attachMotionButton(checkBtn);
+
+      if (s === next) {
         // "!" opens step-by-step help for this task.
         const btn = document.createElement('button');
         btn.className = `hint-btn${this.nudged && !this.hintOpen ? ' pulse' : ''}`;
         btn.textContent = '!';
         btn.title = t('ui.help');
-        btn.addEventListener('click', () => this.toggleHint());
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggleHint();
+        });
         attachMotionButton(btn);
         li.appendChild(btn);
         if (this.hintOpen) {
@@ -628,8 +891,45 @@ export class App {
     }
     this.fillOverlayText();
 
+    // Setup Collapsible Dropdown Open / Close Bar
+    const drawer = document.getElementById('overlayDropdownDrawer');
+    const toggleBtn = document.getElementById('btnToggleOverlay');
+    const toggleText = document.getElementById('overlayToggleText');
+    const toggleArrow = document.getElementById('overlayToggleArrow');
+    const closeBottomBtn = document.getElementById('btnCloseOverlayBottom');
+
+    const setOverlayOpen = (isOpen: boolean) => {
+      if (!drawer) return;
+      if (isOpen) {
+        drawer.classList.remove('collapsed');
+        drawer.classList.add('open');
+        toggleBtn?.setAttribute('aria-expanded', 'true');
+        if (toggleText) toggleText.textContent = 'Hide Controls';
+        if (toggleArrow) toggleArrow.textContent = '▲';
+      } else {
+        drawer.classList.remove('open');
+        drawer.classList.add('collapsed');
+        toggleBtn?.setAttribute('aria-expanded', 'false');
+        if (toggleText) toggleText.textContent = 'Show Controls';
+        if (toggleArrow) toggleArrow.textContent = '▼';
+      }
+    };
+
+    toggleBtn?.addEventListener('click', () => {
+      audio.click();
+      const isOpen = drawer?.classList.contains('open');
+      setOverlayOpen(!isOpen);
+    });
+
+    closeBottomBtn?.addEventListener('click', () => {
+      audio.click();
+      setOverlayOpen(false);
+    });
+
     // Attach Framer Motion spring micro-interactions to buttons
     const interactiveButtons = [
+      $('btnToggleOverlay'),
+      $('btnCloseOverlayBottom'),
       $('reset'),
       $('view360'),
       $('putback'),
@@ -914,6 +1214,13 @@ export class App {
     }
     this.desktopBioConsole.setVisible(dept === 'biology');
 
+    const overlayBarDept = document.getElementById('overlayBarDept');
+    if (overlayBarDept) {
+      const icon = dept === 'biology' ? '🧬' : dept === 'physics' ? '⚡' : dept === 'supermarket' ? '🛒' : dept === 'campus' ? '🏛️' : '🧪';
+      const label = dept === 'biology' ? 'Biology Lab' : dept === 'physics' ? 'Physics Lab' : dept === 'supermarket' ? 'Supermarket' : dept === 'campus' ? 'Campus Quad' : 'Chemistry Lab';
+      overlayBarDept.textContent = `${icon} ${label}`;
+    }
+
     if (dept === 'campus') {
       if (teleport) this.focusActiveDept();
       this.say('HoloLab Science Campus Quadrangle: Chemistry (North), Biology (West), Physics (East), Supermarket (South-East)', 5);
@@ -949,13 +1256,6 @@ export class App {
             (uv) => this.bioLab.handleBoardClick(uv ?? null),
             (uv) => this.bioLab.handleBoardPointerMove?.(uv ?? null),
           );
-          if (this.bioLab.hologram) {
-            for (const m of this.bioLab.hologram.interactiveMeshes) {
-              this.lab.addPressable(m, () => {
-                this.bioLab.hologram.handlePointerDown(m);
-              });
-            }
-          }
         }
       }
 
@@ -1478,13 +1778,6 @@ export class App {
         -(e.clientY / window.innerHeight) * 2 + 1,
       );
       raycaster.setFromCamera(mouse, this.camera);
-      if (this.activeDept === 'biology' && this.bioLab.hologram) {
-        const hits = raycaster.intersectObjects(this.bioLab.hologram.interactiveMeshes, true);
-        if (hits.length > 0 && hits[0].distance < 14) {
-          this.bioLab.hologram.handlePointerDown(hits[0].object);
-          return;
-        }
-      }
       for (const pw of this.portalWaypoints) {
         const hits = raycaster.intersectObjects(pw.mesh.children, true);
         if (hits.length > 0 && hits[0].distance < 18) {

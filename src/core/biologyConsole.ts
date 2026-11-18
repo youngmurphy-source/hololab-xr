@@ -427,12 +427,12 @@ export class BiologyTeachingConsole {
     }
   }
 
-  public selectBodyPart(partOrId: BodyPartDef | string | null) {
-    if (typeof partOrId === 'string') {
-      const found = BODY_PARTS.find((p) => p.id === partOrId) || null;
-      this.state.selectedPart = found;
+  public selectBodyPart(part: BodyPartDef | string | null) {
+    if (typeof part === 'string') {
+      const found = BODY_PARTS.find((p) => p.id === part);
+      this.state.selectedPart = found || null;
     } else {
-      this.state.selectedPart = partOrId;
+      this.state.selectedPart = part;
     }
     if (this.state.selectedPart) {
       audio.click();

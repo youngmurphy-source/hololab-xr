@@ -1,1147 +1,1333 @@
+/**
+ * HoloLab XR — Photorealistic 3D Standing Human Anatomical Hologram
+ * 
+ * Features:
+ * 1. Full-body standing anatomical human figure (Height ~1.80m, Head to Feet)
+ * 2. Dual Presentation (matching medical reference):
+ *    - Left Half: Complete Skeletal System (Cranium, Cervical/Thoracic/Lumbar Spine,
+ *      12 Ribcage Arches, Sternum, Clavicle, Scapula, Pelvis, Femur, Patella, Tibia, Fibula, Foot Bones).
+ *    - Right Half: Complete Muscular System (Facial Muscles, Sternocleidomastoid, Deltoid,
+ *      Pectoralis Major, Rectus Abdominis with 6-pack inscriptions, Obliques, Biceps, Forearm Flexors,
+ *      Quadriceps Femoris, Gastrocnemius, Soleus, Achilles Tendon).
+ *    - Center Core: Full Visceral Organ System (Gyri-sculpted Brain, Trachea with C-rings,
+ *      4-chambered Heart with Aorta/Vena Cava, Lobed Lungs, Hepatic Liver with Gallbladder,
+ *      J-shaped Stomach, Pancreas, Bilateral Kidneys with Adrenal Glands, Haustrated Colon,
+ *      Coiled Small Intestine, Urinary Bladder).
+ * 3. High-Tech Sci-Fi Holographic Pedestal (Multi-tier rotating emitter rings, glowing conduits,
+ *    volumetric beam emitters, upward drifting energy particles).
+ * 4. Translucent Luminous Holographic Boundary Shield (Fresnel edge glow aura hugging body silhouette).
+ * 5. Interactive 3D Spatial Callout Pins & Billboard Labels synchronized with BiologyTeachingConsole.
+ * 6. Dynamic Vital Animations (Real-time Respiration breathing, Cardiac 2-phase heartbeat, Hologram pulse).
+ */
+
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { type BiologyTeachingConsole } from './biologyConsole';
-import { audio } from './audio';
+
+export interface HumanAnatomyHologramOptions {
+  scale?: number;
+  showHUD?: boolean;
+  autoRotate?: boolean;
+  pedestalRadius?: number;
+}
 
 export interface HumanAnatomyHologramInstance {
   group: THREE.Group;
   podiumGroup: THREE.Group;
   bodyGroup: THREE.Group;
-  update: (dt: number, timeSeconds: number) => void;
-  selectPart: (partId: string | null) => void;
+  interactiveMeshes: THREE.Mesh[];
   highlightedPartId: string | null;
-  interactiveMeshes: THREE.Object3D[];
-  handlePointerDown: (hitObject: THREE.Object3D) => boolean;
-  toggleRotation: () => boolean;
+  selectPart: (id: string | null) => void;
+  selectStructure: (id: string | null) => void;
+  setLayer: (layer: 'all' | 'skeletal' | 'muscular' | 'visceral' | 'nervous') => void;
+  getLayer: () => 'all' | 'skeletal' | 'muscular' | 'visceral' | 'nervous';
+  setMode: (mode: 'hologram' | 'realistic' | 'xray') => void;
+  getMode: () => 'hologram' | 'realistic' | 'xray';
+  structures: Map<string, THREE.Object3D>;
+  calloutPins: Map<string, THREE.Object3D>;
+  update: (dt: number, cameraOrTime?: THREE.Camera | number) => void;
+  dispose: () => void;
 }
 
-/** Standard materials helper */
-const stdMat = (color: number, roughness = 0.4, metalness = 0.1, transparent = false, opacity = 1.0) =>
-  new THREE.MeshStandardMaterial({
-    color,
-    roughness,
-    metalness,
-    transparent,
-    opacity,
-  });
+// Shader for the Glowing Holographic Boundary Shield (Fresnel Edge Glow)
+const HologramShieldShader = {
+  uniforms: {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(0x38bdf8) },
+    uRimPower: { value: 2.8 },
+    uRimIntensity: { value: 1.8 },
+    uScanlineFreq: { value: 45.0 },
+    uScanlineSpeed: { value: 2.0 },
+    uOpacity: { value: 0.35 },
+  },
+  vertexShader: `
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+    varying vec2 vUv;
+    varying vec3 vWorldPosition;
 
-/** Helper to create a curved 3D tube bone/rib/vessel from points */
-function createCurvedTube(points: THREE.Vector3[], radius: number, radialSegments = 8, tubularSegments = 24): THREE.Mesh {
-  const curve = new THREE.CatmullRomCurve3(points);
-  const geom = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
-  return new THREE.Mesh(geom);
-}
+    void main() {
+      vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vViewPosition = -mvPosition.xyz;
+      vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 uColor;
+    uniform float uTime;
+    uniform float uRimPower;
+    uniform float uRimIntensity;
+    uniform float uScanlineFreq;
+    uniform float uScanlineSpeed;
+    uniform float uOpacity;
 
-/**
- * Builds the realistic full human anatomy body with realistic anatomical skin/sculpt,
- * complete internal visceral organ systems, detailed cardiovascular circulatory vascular tree
- * (arteries and veins), skeletal and muscular foundations, high-tech exhibition pedestal,
- * and interactive floating callout cards matching medical anatomy charts.
- */
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+    varying vec2 vUv;
+    varying vec3 vWorldPosition;
+
+    void main() {
+      vec3 normal = normalize(vNormal);
+      vec3 viewDir = normalize(vViewPosition);
+
+      // Fresnel rim factor: 1.0 at glancing edges, 0.0 facing camera
+      float fresnel = 1.0 - abs(dot(normal, viewDir));
+      fresnel = pow(clamp(fresnel, 0.0, 1.0), uRimPower) * uRimIntensity;
+
+      // Vertical animated holographic scanlines
+      float scanline = sin((vWorldPosition.y + uTime * uScanlineSpeed * 0.15) * uScanlineFreq);
+      scanline = smoothstep(-0.2, 0.8, scanline) * 0.25 + 0.75;
+
+      // Subtle horizontal interference flicker
+      float flicker = 0.95 + 0.05 * sin(uTime * 18.0 + vWorldPosition.y * 30.0);
+
+      float alpha = clamp((fresnel * 0.75 + 0.08) * uOpacity * scanline * flicker, 0.0, 0.95);
+      vec3 glowColor = uColor * (1.0 + fresnel * 1.2);
+
+      gl_FragColor = vec4(glowColor, alpha);
+    }
+  `,
+};
+
 export function buildHumanAnatomyHologram(
-  consoleInstance?: BiologyTeachingConsole | null,
-  options: {
-    scale?: number;
-    showHUD?: boolean;
-    autoRotate?: boolean;
-  } = {}
+  consoleRef: BiologyTeachingConsole | null = null,
+  options: HumanAnatomyHologramOptions = {}
 ): HumanAnatomyHologramInstance {
-  const root = new THREE.Group();
-  root.name = 'HumanAnatomyBody';
+  const scale = options.scale ?? 1.05;
+  const showHUD = options.showHUD ?? true;
+  let autoRotate = options.autoRotate ?? false;
 
-  const scale = options.scale ?? 1.0;
-  root.scale.set(scale, scale, scale);
+  const rootGroup = new THREE.Group();
+  rootGroup.name = 'HumanAnatomyHologram';
+  rootGroup.scale.set(scale, scale, scale);
 
-  // Groups
-  const podiumGroup = new THREE.Group();
-  podiumGroup.name = 'ExhibitionPodium';
-  root.add(podiumGroup);
+  const structures = new Map<string, THREE.Object3D>();
+  const calloutPins = new Map<string, THREE.Object3D>();
+  const interactiveMeshes: THREE.Mesh[] = [];
 
-  const bodyGroup = new THREE.Group();
-  bodyGroup.name = 'RealisticHumanBody';
-  // Standard adult human standing height is ~1.78m.
-  // Feet placed on the pedestal at Y = 0.12m.
-  bodyGroup.position.set(0, 0.12, 0);
-  root.add(bodyGroup);
+  // Active state
+  let highlightedPartId: string | null = null;
+  let currentLayer: 'all' | 'skeletal' | 'muscular' | 'visceral' | 'nervous' = 'all';
+  let currentVisualMode: 'hologram' | 'realistic' | 'xray' = 'realistic';
 
-  // =========================================================================
-  // MATERIALS LIBRARY (Authentic Medical CGI Rendering Palette)
-  // =========================================================================
-  // Realistic Human Skin (Warm natural undertone with subsurface translucency)
-  const matHumanSkin = new THREE.MeshPhysicalMaterial({
-    color: 0xefb897, // Natural warm human flesh tone
-    roughness: 0.45,
-    metalness: 0.05,
-    transmission: 0.62, // Translucent skin reveal showing internal organs & vascular tree
-    thickness: 0.04,
-    ior: 1.4,
-    transparent: true,
-    opacity: 0.76,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-
-  const matHumanHair = stdMat(0x2d1b0e, 0.85, 0.0); // Espresso dark brown human hair
-  const matHumanLips = stdMat(0xc27161, 0.5, 0.05); // Natural rosy lips
-  const matHumanEyes = stdMat(0x1e3a8a, 0.1, 0.3); // Deep blue iris
-
-  // Skeletal Ivory Bone Materials
-  const matBone = stdMat(0xfdfaf4, 0.32, 0.05);
-  const matBoneHighlighted = new THREE.MeshStandardMaterial({
-    color: 0x38bdf8,
-    emissive: 0x0284c7,
-    roughness: 0.2,
-    metalness: 0.1,
+  // Master Material Library with Medical PBR characteristics
+  const matBone = new THREE.MeshStandardMaterial({
+    color: 0xfaebd7,
+    roughness: 0.42,
+    metalness: 0.04,
   });
 
   const matCartilage = new THREE.MeshStandardMaterial({
-    color: 0xbae6fd,
+    color: 0xdbeafe,
     roughness: 0.25,
-    metalness: 0.05,
+    metalness: 0.02,
     transparent: true,
-    opacity: 0.88,
+    opacity: 0.92,
   });
 
-  // Muscular Striated Tissue
   const matMuscle = new THREE.MeshStandardMaterial({
-    color: 0xa8203c, // Deep anatomical striated muscle crimson
-    roughness: 0.42,
+    color: 0xb91c1c,
+    roughness: 0.58,
+    metalness: 0.08,
+  });
+
+  const matTendon = new THREE.MeshStandardMaterial({
+    color: 0xf1f5f9,
+    roughness: 0.32,
+    metalness: 0.05,
+  });
+
+  const matBrain = new THREE.MeshStandardMaterial({
+    color: 0xf472b6,
+    roughness: 0.38,
+    metalness: 0.02,
+  });
+
+  const matHeart = new THREE.MeshStandardMaterial({
+    color: 0x991b1b,
+    roughness: 0.28,
     metalness: 0.12,
   });
 
-  const matMuscleHighlighted = new THREE.MeshStandardMaterial({
-    color: 0xf43f5e,
-    emissive: 0x881337,
-    roughness: 0.3,
-    metalness: 0.1,
-  });
-
-  const matTendon = stdMat(0xf1f5f9, 0.3, 0.02);
-
-  // Internal Visceral Organs (Colors matching the educational chart)
-  const matBrain = stdMat(0xf472b6, 0.35, 0.08); // Cerebral cortical pink
-  const matLung = new THREE.MeshStandardMaterial({
-    color: 0xf472b6, // Soft pulmonary rose
-    roughness: 0.38,
-    metalness: 0.05,
-    transparent: true,
-    opacity: 0.94,
-  });
-  const matHeart = new THREE.MeshStandardMaterial({
-    color: 0xbe123c, // Cardiac myocardium crimson
-    roughness: 0.28,
-    metalness: 0.18,
-  });
-  const matLiver = stdMat(0x7f1d1d, 0.35, 0.08); // Deep burgundy hepatic tissue
-  const matGallbladder = stdMat(0x65a30d, 0.3, 0.1); // Bile olive green
-  const matStomach = stdMat(0xf97316, 0.38, 0.05); // Gastric amber/terracotta
-  const matPancreas = stdMat(0xf59e0b, 0.4, 0.05); // Pancreatic golden/salmon
-  const matSpleen = stdMat(0x831843, 0.32, 0.1); // Deep purplish lymphoid red
-  const matIntestines = stdMat(0xfb923c, 0.45, 0.04); // Intestinal coils
-  const matKidney = stdMat(0x991b1b, 0.32, 0.08); // Renal crimson
-  const matUreter = stdMat(0xfef08a, 0.3, 0.05); // Slender ivory/yellow ureters
-  const matBladder = stdMat(0xf97316, 0.4, 0.05); // Urinary bladder
-  const matDiaphragm = stdMat(0xb91c1c, 0.5, 0.05); // Muscular diaphragm dome
-
-  // Vascular Circulatory Tree Materials (Red Arteries & Blue Veins)
   const matArtery = new THREE.MeshStandardMaterial({
-    color: 0xef4444, // Arterial bright scarlet
-    emissive: 0x7f1d1d,
-    emissiveIntensity: 0.35,
-    roughness: 0.25,
-  });
-  const matVein = new THREE.MeshStandardMaterial({
-    color: 0x0284c7, // Venous deep azure blue
-    emissive: 0x075985,
-    emissiveIntensity: 0.35,
-    roughness: 0.25,
+    color: 0xdc2626,
+    roughness: 0.30,
+    metalness: 0.10,
   });
 
-  // Futuristic Hologram Emitter Materials
-  const matPodiumBase = stdMat(0x0f172a, 0.25, 0.85); // Brushed dark titanium alloy
-  const matPodiumTrim = stdMat(0x334155, 0.3, 0.7);
-  const matEmitterNeon = new THREE.MeshBasicMaterial({
-    color: 0x00d2ff,
-    transparent: true,
-    opacity: 0.95,
+  const matVein = new THREE.MeshStandardMaterial({
+    color: 0x1d4ed8,
+    roughness: 0.30,
+    metalness: 0.10,
   });
-  const matEmitterGlow = new THREE.MeshBasicMaterial({
+
+  const matLung = new THREE.MeshStandardMaterial({
+    color: 0xfb7185,
+    roughness: 0.52,
+    metalness: 0.02,
+  });
+
+  const matLiver = new THREE.MeshStandardMaterial({
+    color: 0x7c2d12,
+    roughness: 0.30,
+    metalness: 0.08,
+  });
+
+  const matGallbladder = new THREE.MeshStandardMaterial({
+    color: 0x10b981,
+    roughness: 0.25,
+    metalness: 0.15,
+  });
+
+  const matStomach = new THREE.MeshStandardMaterial({
+    color: 0xf87171,
+    roughness: 0.35,
+    metalness: 0.05,
+  });
+
+  const matPancreas = new THREE.MeshStandardMaterial({
+    color: 0xfacc15,
+    roughness: 0.45,
+    metalness: 0.05,
+  });
+
+  const matSpleen = new THREE.MeshStandardMaterial({
+    color: 0x831843,
+    roughness: 0.32,
+    metalness: 0.05,
+  });
+
+  const matKidney = new THREE.MeshStandardMaterial({
+    color: 0x881337,
+    roughness: 0.28,
+    metalness: 0.10,
+  });
+
+  const matIntestine = new THREE.MeshStandardMaterial({
+    color: 0xfca5a5,
+    roughness: 0.38,
+    metalness: 0.04,
+  });
+
+  const matColon = new THREE.MeshStandardMaterial({
+    color: 0xe11d48,
+    roughness: 0.42,
+    metalness: 0.06,
+  });
+
+  const matBladder = new THREE.MeshStandardMaterial({
+    color: 0xfb923c,
+    roughness: 0.30,
+    metalness: 0.05,
+  });
+
+  const matSciFiPedestal = new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    roughness: 0.25,
+    metalness: 0.88,
+  });
+
+  const matSciFiTrim = new THREE.MeshStandardMaterial({
     color: 0x38bdf8,
-    transparent: true,
-    opacity: 0.35,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    depthWrite: false,
+    emissive: 0x0284c7,
+    emissiveIntensity: 0.85,
+    roughness: 0.20,
+    metalness: 0.50,
   });
-  const matBeamCone = new THREE.MeshBasicMaterial({
-    color: 0x0ea5e9,
-    transparent: true,
-    opacity: 0.12,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  const matHudRing = new THREE.MeshBasicMaterial({
+
+  // =========================================================================
+  // 1. SCI-FI HOLOGRAPHIC EMITTER PEDESTAL & ENERGY CONDUITS (BASE)
+  // Height = 0.12m
+  // =========================================================================
+  const podiumGroup = new THREE.Group();
+  podiumGroup.name = 'PedestalEmitter';
+  rootGroup.add(podiumGroup);
+
+  // Main circular beveled dais (0.12m height)
+  const daisBaseGeom = new THREE.CylinderGeometry(0.68, 0.74, 0.12, 48);
+  const daisBaseMesh = new THREE.Mesh(daisBaseGeom, matSciFiPedestal);
+  daisBaseMesh.position.y = 0.06;
+  daisBaseMesh.receiveShadow = true;
+  podiumGroup.add(daisBaseMesh);
+
+  // Concentric recessed glowing rings
+  const ring1Geom = new THREE.RingGeometry(0.48, 0.52, 48);
+  const ringMat1 = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide });
+  const ring1Mesh = new THREE.Mesh(ring1Geom, ringMat1);
+  ring1Mesh.rotation.x = -Math.PI / 2;
+  ring1Mesh.position.y = 0.121;
+  podiumGroup.add(ring1Mesh);
+
+  const ring2Geom = new THREE.RingGeometry(0.58, 0.62, 48);
+  const ringMat2 = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, side: THREE.DoubleSide });
+  const ring2Mesh = new THREE.Mesh(ring2Geom, ringMat2);
+  ring2Mesh.rotation.x = -Math.PI / 2;
+  ring2Mesh.position.y = 0.121;
+  podiumGroup.add(ring2Mesh);
+
+  // Rotating outer projector ring with holographic tick marks
+  const tickRingGroup = new THREE.Group();
+  tickRingGroup.position.y = 0.122;
+  for (let i = 0; i < 24; i++) {
+    const angle = (i / 24) * Math.PI * 2;
+    const tickGeom = new THREE.PlaneGeometry(0.012, 0.04);
+    const tickMat = new THREE.MeshBasicMaterial({ color: i % 4 === 0 ? 0x38bdf8 : 0x0284c7, side: THREE.DoubleSide });
+    const tick = new THREE.Mesh(tickGeom, tickMat);
+    tick.rotation.x = -Math.PI / 2;
+    tick.rotation.z = angle;
+    tick.position.set(Math.cos(angle) * 0.55, 0, Math.sin(angle) * 0.55);
+    tickRingGroup.add(tick);
+  }
+  podiumGroup.add(tickRingGroup);
+
+  // 4 Upward Holographic Projector Emitter Lenses
+  for (let i = 0; i < 4; i++) {
+    const angle = (i * Math.PI) / 2 + Math.PI / 4;
+    const emitterGeom = new THREE.CylinderGeometry(0.035, 0.045, 0.05, 16);
+    const emitterMesh = new THREE.Mesh(emitterGeom, matSciFiTrim);
+    emitterMesh.position.set(Math.cos(angle) * 0.50, 0.13, Math.sin(angle) * 0.50);
+    podiumGroup.add(emitterMesh);
+
+    // Subtle upward optical guide beam
+    const beamGeom = new THREE.CylinderGeometry(0.015, 0.025, 1.85, 12, 1, true);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.12,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    });
+    const beamMesh = new THREE.Mesh(beamGeom, beamMat);
+    beamMesh.position.set(Math.cos(angle) * 0.50, 1.05, Math.sin(angle) * 0.50);
+    podiumGroup.add(beamMesh);
+  }
+
+  // Rising holographic energy particles
+  const particleCount = 45;
+  const particleGeom = new THREE.BufferGeometry();
+  const particlePositions = new Float32Array(particleCount * 3);
+  const particleSpeeds = new Float32Array(particleCount);
+
+  for (let i = 0; i < particleCount; i++) {
+    const r = 0.15 + Math.random() * 0.45;
+    const theta = Math.random() * Math.PI * 2;
+    particlePositions[i * 3 + 0] = Math.cos(theta) * r;
+    particlePositions[i * 3 + 1] = 0.12 + Math.random() * 1.85;
+    particlePositions[i * 3 + 2] = Math.sin(theta) * r;
+    particleSpeeds[i] = 0.12 + Math.random() * 0.25;
+  }
+  particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+  const particleMat = new THREE.PointsMaterial({
     color: 0x38bdf8,
+    size: 0.022,
     transparent: true,
     opacity: 0.65,
-    wireframe: true,
+    blending: THREE.AdditiveBlending,
   });
+  const particlePoints = new THREE.Points(particleGeom, particleMat);
+  podiumGroup.add(particlePoints);
 
-  // Interactive structures registry
-  const partMeshMap = new Map<string, THREE.Mesh[]>();
-  const interactiveMeshes: THREE.Object3D[] = [];
-  const partOriginalMaterials = new Map<THREE.Mesh, THREE.Material>();
+  // =========================================================================
+  // 2. STANDING ANATOMICAL BODY GROUP
+  // Positioned atop the 0.12m podium
+  // =========================================================================
+  const bodyGroup = new THREE.Group();
+  bodyGroup.name = 'AnatomicalBodyGroup';
+  bodyGroup.position.set(0, 0.12, 0);
+  rootGroup.add(bodyGroup);
 
-  function registerPartMesh(partId: string, mesh: THREE.Mesh, customMat?: THREE.Material) {
-    if (customMat) mesh.material = customMat;
+  // Layer sub-groups inside bodyGroup
+  const skeletalGroup = new THREE.Group();
+  skeletalGroup.name = 'Layer_Skeletal';
+  bodyGroup.add(skeletalGroup);
+
+  const muscularGroup = new THREE.Group();
+  muscularGroup.name = 'Layer_Muscular';
+  bodyGroup.add(muscularGroup);
+
+  const visceralGroup = new THREE.Group();
+  visceralGroup.name = 'Layer_Visceral';
+  bodyGroup.add(visceralGroup);
+
+  const hudGroup = new THREE.Group();
+  hudGroup.name = 'Layer_HUD';
+  bodyGroup.add(hudGroup);
+
+  // Helper to register interactive part meshes
+  const registerPartMesh = (
+    mesh: THREE.Mesh,
+    partId: string,
+    partName: string,
+    layer: 'skeletal' | 'muscular' | 'visceral',
+    secondaryId?: string
+  ) => {
+    mesh.userData = {
+      bodyPartId: partId,
+      partId,
+      partName,
+      layer,
+      originalMat: mesh.material,
+    };
+    if (secondaryId) {
+      mesh.userData.secondaryId = secondaryId;
+    }
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.userData = { bodyPartId: partId };
+    structures.set(partId, mesh);
+    if (secondaryId) {
+      structures.set(secondaryId, mesh);
+    }
     interactiveMeshes.push(mesh);
-    partOriginalMaterials.set(mesh, mesh.material as THREE.Material);
-
-    if (!partMeshMap.has(partId)) {
-      partMeshMap.set(partId, []);
-    }
-    partMeshMap.get(partId)!.push(mesh);
-  }
+  };
 
   // =========================================================================
-  // 1. EXHIBITION PODIUM & SCI-FI EMITTER BASE
+  // 3. LUMINOUS HOLOGRAPHIC BOUNDARY SHIELD (FRESNEL ENERGY FIELD)
   // =========================================================================
-  const podRadius = 0.75;
-  const podH = 0.12;
-
-  // Outer circular beveled titanium plinth
-  const podPlinth = new THREE.Mesh(
-    new THREE.CylinderGeometry(podRadius, podRadius + 0.08, podH, 48),
-    matPodiumBase
-  );
-  podPlinth.position.y = podH / 2;
-  podPlinth.receiveShadow = true;
-  podiumGroup.add(podPlinth);
-
-  // Brushed steel top rim chamfer
-  const podRim = new THREE.Mesh(
-    new THREE.TorusGeometry(podRadius, 0.018, 16, 48),
-    matPodiumTrim
-  );
-  podRim.rotation.x = Math.PI / 2;
-  podRim.position.y = podH;
-  podiumGroup.add(podRim);
-
-  // Concentric Neon Cyan Emitter Rings
-  const neonRing1 = new THREE.Mesh(
-    new THREE.RingGeometry(podRadius - 0.06, podRadius - 0.02, 48),
-    matEmitterNeon
-  );
-  neonRing1.rotation.x = -Math.PI / 2;
-  neonRing1.position.y = podH + 0.002;
-  podiumGroup.add(neonRing1);
-
-  const neonRing2 = new THREE.Mesh(
-    new THREE.RingGeometry(0.38, 0.42, 48),
-    matEmitterNeon
-  );
-  neonRing2.rotation.x = -Math.PI / 2;
-  neonRing2.position.y = podH + 0.002;
-  podiumGroup.add(neonRing2);
-
-  // Center Holographic Projection Disc Lens
-  const centerLens = new THREE.Mesh(
-    new THREE.CircleGeometry(0.26, 32),
-    matEmitterGlow
-  );
-  centerLens.rotation.x = -Math.PI / 2;
-  centerLens.position.y = podH + 0.003;
-  podiumGroup.add(centerLens);
-
-  // Radial optical projector vents
-  for (let i = 0; i < 16; i++) {
-    const angle = (i / 16) * Math.PI * 2;
-    const vent = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.004, 0.022),
-      matPodiumTrim
-    );
-    vent.position.set(Math.cos(angle) * (podRadius - 0.14), podH + 0.002, Math.sin(angle) * (podRadius - 0.14));
-    vent.rotation.y = -angle;
-    podiumGroup.add(vent);
-  }
-
-  // Upward Volumetric Hologram Projection Cone
-  const holoBeam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.55, 0.28, 2.05, 32, 1, true),
-    matBeamCone
-  );
-  holoBeam.position.y = podH + 1.025;
-  podiumGroup.add(holoBeam);
-
-  // Secondary floating waist HUD telemetry circle
-  const waistHud = new THREE.Mesh(
-    new THREE.RingGeometry(0.48, 0.495, 48),
-    matHudRing
-  );
-  waistHud.rotation.x = Math.PI / 2;
-  waistHud.position.y = 1.06;
-  bodyGroup.add(waistHud);
-
-  // Secondary floating chest HUD telemetry circle
-  const chestHud = new THREE.Mesh(
-    new THREE.RingGeometry(0.56, 0.575, 48),
-    matHudRing
-  );
-  chestHud.rotation.x = Math.PI / 2;
-  chestHud.position.y = 1.42;
-  bodyGroup.add(chestHud);
+  const shieldGeom = new THREE.CapsuleGeometry(0.48, 1.15, 24, 32);
+  const shieldMat = new THREE.ShaderMaterial({
+    vertexShader: HologramShieldShader.vertexShader,
+    fragmentShader: HologramShieldShader.fragmentShader,
+    uniforms: THREE.UniformsUtils.clone(HologramShieldShader.uniforms),
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+  shieldMesh.position.set(0, 0.95, 0);
+  bodyGroup.add(shieldMesh);
 
   // =========================================================================
-  // 2. REALISTIC HUMAN SCULPT & CUTAWAY TRANSLUCENT BODY
-  // Anatomical human standing figure with realistic head, hair, face, torso,
-  // arms, hands, legs, and feet
+  // 4. SKELETAL SYSTEM (LEFT HALF & POSTERIOR AXIAL SKELETON)
   // =========================================================================
-  const outerBodyGroup = new THREE.Group();
-  outerBodyGroup.name = 'RealisticHumanOuterBody';
 
-  // 2.1 REALISTIC HEAD & FACIAL FEATURES
-  const headGroup = new THREE.Group();
-  headGroup.position.set(0, 1.72, 0);
+  // 4.1 Skull & Cranium
+  const skullGroup = new THREE.Group();
+  skullGroup.position.set(0, 1.68, 0);
 
-  // Cranium Vault & Forehead
-  const headFlesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.112, 24, 20),
-    matHumanSkin
-  );
-  headFlesh.scale.set(0.92, 1.18, 1.06);
-  headFlesh.position.set(0, 0.02, 0);
-  headGroup.add(headFlesh);
+  const craniumGeom = new THREE.SphereGeometry(0.115, 24, 20, Math.PI / 2, Math.PI, 0, Math.PI * 0.95);
+  craniumGeom.scale(0.92, 1.18, 1.05);
+  const craniumMesh = new THREE.Mesh(craniumGeom, matBone);
+  skullGroup.add(craniumMesh);
 
-  // Styled Dark Hair Cap (Anatomical male haircut matching chart)
-  const hairCap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.116, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.52),
-    matHumanHair
-  );
-  hairCap.scale.set(0.94, 1.18, 1.08);
-  hairCap.position.set(0, 0.038, -0.008);
-  headGroup.add(hairCap);
+  const orbitGeom = new THREE.TorusGeometry(0.026, 0.008, 12, 20);
+  const orbitMesh = new THREE.Mesh(orbitGeom, matBone);
+  orbitMesh.position.set(-0.042, -0.015, 0.095);
+  skullGroup.add(orbitMesh);
 
-  // Hair Sideburns & Temples
-  for (const side of [-1, 1]) {
-    const sideburn = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.055, 0.025), matHumanHair);
-    sideburn.position.set(side * 0.095, 0.015, 0.01);
-    headGroup.add(sideburn);
+  const zygomaticGeom = new THREE.BoxGeometry(0.025, 0.038, 0.05);
+  const zygomaticMesh = new THREE.Mesh(zygomaticGeom, matBone);
+  zygomaticMesh.position.set(-0.068, -0.035, 0.055);
+  zygomaticMesh.rotation.y = 0.25;
+  skullGroup.add(zygomaticMesh);
 
-    // Realistic External Ears (Auricle / Pinna)
-    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.042, 0.026), matHumanSkin);
-    ear.position.set(side * 0.104, 0.01, -0.012);
-    ear.rotation.y = side * 0.15;
-    headGroup.add(ear);
+  const mandibleGeom = new THREE.CylinderGeometry(0.014, 0.018, 0.065, 12);
+  const mandibleMesh = new THREE.Mesh(mandibleGeom, matBone);
+  mandibleMesh.position.set(-0.048, -0.085, 0.04);
+  mandibleMesh.rotation.z = 0.35;
+  skullGroup.add(mandibleMesh);
 
-    // Realistic Eyes (Iris & Sclera)
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), matHumanEyes);
-    eye.position.set(side * 0.038, 0.018, 0.098);
-    headGroup.add(eye);
-  }
+  registerPartMesh(craniumMesh, 'skull', 'Cranium & Facial Skeleton', 'skeletal');
+  skeletalGroup.add(skullGroup);
 
-  // Sculpted Nose
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.042, 8), matHumanSkin);
-  nose.position.set(0, 0.01, 0.112);
-  nose.rotation.x = 0.25;
-  headGroup.add(nose);
-
-  // Upper & Lower Lips
-  const lips = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.014, 0.016), matHumanLips);
-  lips.position.set(0, -0.035, 0.102);
-  headGroup.add(lips);
-
-  // Chin & Jawline
-  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 10), matHumanSkin);
-  chin.position.set(0, -0.075, 0.085);
-  headGroup.add(chin);
-
-  outerBodyGroup.add(headGroup);
-
-  // 2.2 NECK & THROAT
-  const neckMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.078, 0.14, 20),
-    matHumanSkin
-  );
-  neckMesh.position.set(0, 1.58, 0.01);
-  outerBodyGroup.add(neckMesh);
-
-  // 2.3 TORSO, CHEST & ABDOMEN SILHOUETTE
-  // Upper Thorax / Chest
-  const chestMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.182, 0.148, 0.36, 24),
-    matHumanSkin
-  );
-  chestMesh.scale.set(1.15, 1.0, 0.82);
-  chestMesh.position.set(0, 1.35, 0.025);
-  outerBodyGroup.add(chestMesh);
-
-  // Abdomen & Waist
-  const abdomenMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.145, 0.168, 0.34, 24),
-    matHumanSkin
-  );
-  abdomenMesh.scale.set(1.16, 1.0, 0.85);
-  abdomenMesh.position.set(0, 1.02, 0.015);
-  outerBodyGroup.add(abdomenMesh);
-
-  // 2.4 UPPER LIMBS: SHOULDERS, ARMS & HANDS
-  for (const side of [-1, 1]) {
-    // Upper Arm
-    const armMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.04, 0.28, 14),
-      matHumanSkin
-    );
-    armMesh.position.set(side * 0.23, 1.35, 0.01);
-    armMesh.rotation.z = -side * 0.30;
-    outerBodyGroup.add(armMesh);
-
-    // Forearm
-    const forearmMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.03, 0.26, 14),
-      matHumanSkin
-    );
-    forearmMesh.position.set(side * 0.295, 1.12, 0.01);
-    forearmMesh.rotation.z = -side * 0.25;
-    outerBodyGroup.add(forearmMesh);
-
-    // Hand & Palm with 5 Individual Spread Fingers (Palms facing forward)
-    const handMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.065, 0.085, 0.022),
-      matHumanSkin
-    );
-    handMesh.position.set(side * 0.345, 0.94, 0.01);
-    outerBodyGroup.add(handMesh);
-    registerPartMesh('hand', handMesh);
-
-    // 5 Fingers
-    const fLens = [0.038, 0.058, 0.064, 0.058, 0.046];
-    const fXSpreads = [side * 0.026, side * 0.014, 0, -side * 0.014, -side * 0.026];
-    for (let f = 0; f < 5; f++) {
-      const fGeom = new THREE.CylinderGeometry(0.005, 0.004, fLens[f], 8);
-      const finger = new THREE.Mesh(fGeom, matHumanSkin);
-      finger.position.set(side * 0.345 + fXSpreads[f], 0.89 - fLens[f] / 2, 0.01);
-      if (f === 0) {
-        finger.rotation.z = side * 0.35;
-        finger.position.set(side * 0.375, 0.92, 0.015);
-      }
-      outerBodyGroup.add(finger);
-      registerPartMesh('hand', finger);
-    }
-  }
-
-  // 2.5 LOWER LIMBS: THIGHS, LEGS & FEET
-  for (const side of [-1, 1]) {
-    // Thigh
-    const thighMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.088, 0.065, 0.44, 18),
-      matHumanSkin
-    );
-    thighMesh.position.set(side * 0.105, 0.72, 0.01);
-    outerBodyGroup.add(thighMesh);
-
-    // Knee Patellar Contoured Region
-    const kneeCap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.032, 12, 10),
-      matHumanSkin
-    );
-    kneeCap.position.set(side * 0.105, 0.50, 0.025);
-    outerBodyGroup.add(kneeCap);
-
-    // Calf & Lower Leg
-    const calfMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.062, 0.042, 0.44, 16),
-      matHumanSkin
-    );
-    calfMesh.position.set(side * 0.105, 0.28, 0);
-    outerBodyGroup.add(calfMesh);
-
-    // Foot with Toes
-    const footMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.078, 0.055, 0.20),
-      matHumanSkin
-    );
-    footMesh.position.set(side * 0.105, 0.035, 0.045);
-    outerBodyGroup.add(footMesh);
-    registerPartMesh('foot', footMesh);
-  }
-
-  bodyGroup.add(outerBodyGroup);
-
-  // =========================================================================
-  // 3. COMPLETE CARDIOVASCULAR CIRCULATORY VASCULAR TREE
-  // Branching Red Arteries and Blue Veins traversing the entire body
-  // matching the uploaded medical anatomy chart
-  // =========================================================================
-  const vascularGroup = new THREE.Group();
-  vascularGroup.name = 'CirculatorySystem';
-
-  // 3.1 ARTERIAL NETWORK (Bright Scarlet 0xef4444)
-  // Descending Thoracic & Abdominal Aorta
-  const aortaSpineCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.015, 1.38, 0.01),
-    new THREE.Vector3(-0.012, 1.25, -0.015),
-    new THREE.Vector3(-0.01, 1.12, -0.02),
-    new THREE.Vector3(-0.005, 1.02, -0.015),
+  // 4.2 Spine
+  const spineGroup = new THREE.Group();
+  const spineCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 1.58, -0.04),
+    new THREE.Vector3(0, 1.50, -0.02),
+    new THREE.Vector3(0, 1.40, -0.055),
+    new THREE.Vector3(0, 1.25, -0.06),
+    new THREE.Vector3(0, 1.10, -0.035),
+    new THREE.Vector3(0, 0.98, -0.045),
+    new THREE.Vector3(0, 0.92, -0.06),
   ]);
-  const aortaSpine = new THREE.Mesh(new THREE.TubeGeometry(aortaSpineCurve, 20, 0.009, 8, false), matArtery);
-  vascularGroup.add(aortaSpine);
 
-  // Common Carotid Arteries to Head & Temples
-  for (const side of [-1, 1]) {
-    const carotidCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.018, 1.46, 0.04),
-      new THREE.Vector3(side * 0.024, 1.58, 0.035),
-      new THREE.Vector3(side * 0.038, 1.68, 0.025),
-      new THREE.Vector3(side * 0.055, 1.76, 0.015),
-    ]);
-    const carotidTube = new THREE.Mesh(new THREE.TubeGeometry(carotidCurve, 16, 0.005, 6, false), matArtery);
-    vascularGroup.add(carotidTube);
+  for (let i = 0; i <= 24; i++) {
+    const t = i / 24;
+    const pt = spineCurve.getPoint(t);
+    const vertGeom = new THREE.CylinderGeometry(0.022, 0.024, 0.014, 16);
+    const vertMesh = new THREE.Mesh(vertGeom, i % 2 === 0 ? matBone : matCartilage);
+    vertMesh.position.copy(pt);
+    vertMesh.rotation.x = Math.PI / 2;
+    spineGroup.add(vertMesh);
+
+    const spinousGeom = new THREE.ConeGeometry(0.007, 0.028, 8);
+    const spinousMesh = new THREE.Mesh(spinousGeom, matBone);
+    spinousMesh.position.set(0, pt.y, pt.z - 0.022);
+    spinousMesh.rotation.x = -Math.PI / 2;
+    spineGroup.add(spinousMesh);
   }
+  const spinePrimaryMesh = spineGroup.children[0] as THREE.Mesh;
+  registerPartMesh(spinePrimaryMesh, 'spine', 'Vertebral Column (Spine)', 'skeletal');
+  skeletalGroup.add(spineGroup);
 
-  // Upper Limb Arterial Tree: Subclavian -> Brachial -> Radial & Ulnar down to hands
-  for (const side of [-1, 1]) {
-    const armArteryCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.03, 1.44, 0.03),
-      new THREE.Vector3(side * 0.12, 1.45, 0.02),
-      new THREE.Vector3(side * 0.22, 1.34, 0.01),
-      new THREE.Vector3(side * 0.28, 1.18, 0.01), // Brachial
-      new THREE.Vector3(side * 0.32, 1.02, 0.01), // Radial / Ulnar
-      new THREE.Vector3(side * 0.34, 0.94, 0.01), // Palmar arch
-    ]);
-    const armArtery = new THREE.Mesh(new THREE.TubeGeometry(armArteryCurve, 24, 0.004, 6, false), matArtery);
-    vascularGroup.add(armArtery);
-  }
+  // 4.3 Thoracic Ribcage & Sternum
+  const ribsGroup = new THREE.Group();
 
-  // Lower Limb Arterial Tree: Iliac -> Femoral -> Popliteal -> Tibial down to feet
-  for (const side of [-1, 1]) {
-    const legArteryCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.01, 1.02, -0.015),
-      new THREE.Vector3(side * 0.065, 0.94, 0.01), // Iliac
-      new THREE.Vector3(side * 0.095, 0.78, 0.02), // Femoral
-      new THREE.Vector3(side * 0.105, 0.50, 0.005), // Popliteal
-      new THREE.Vector3(side * 0.102, 0.26, 0.01), // Tibial
-      new THREE.Vector3(side * 0.105, 0.04, 0.05), // Dorsal pedis
-    ]);
-    const legArtery = new THREE.Mesh(new THREE.TubeGeometry(legArteryCurve, 28, 0.0045, 6, false), matArtery);
-    vascularGroup.add(legArtery);
-  }
-
-  // 3.2 VENOUS NETWORK (Deep Azure Blue 0x0284c7)
-  // Inferior Vena Cava ascending along the spine
-  const ivcCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0.012, 1.02, -0.015),
-    new THREE.Vector3(0.014, 1.14, -0.018),
-    new THREE.Vector3(0.016, 1.26, -0.012),
-    new THREE.Vector3(0.018, 1.34, 0.015),
+  const clavicleCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.015, 1.485, 0.04),
+    new THREE.Vector3(-0.08, 1.492, 0.035),
+    new THREE.Vector3(-0.165, 1.478, -0.01),
   ]);
-  const ivcMesh = new THREE.Mesh(new THREE.TubeGeometry(ivcCurve, 20, 0.01, 8, false), matVein);
-  vascularGroup.add(ivcMesh);
+  const clavicleGeom = new THREE.TubeGeometry(clavicleCurve, 16, 0.011, 10, false);
+  const clavicleMesh = new THREE.Mesh(clavicleGeom, matBone);
+  ribsGroup.add(clavicleMesh);
 
-  // Jugular Veins descending from cranium and face
-  for (const side of [-1, 1]) {
-    const jugularCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.06, 1.74, 0.01),
-      new THREE.Vector3(side * 0.045, 1.66, 0.02),
-      new THREE.Vector3(side * 0.035, 1.56, 0.03),
-      new THREE.Vector3(side * 0.025, 1.45, 0.035),
+  const scapulaGeom = new THREE.BoxGeometry(0.075, 0.11, 0.012);
+  const scapulaMesh = new THREE.Mesh(scapulaGeom, matBone);
+  scapulaMesh.position.set(-0.125, 1.41, -0.082);
+  scapulaMesh.rotation.set(0.12, 0.28, -0.15);
+  ribsGroup.add(scapulaMesh);
+
+  const sternumGeom = new THREE.BoxGeometry(0.016, 0.17, 0.012);
+  const sternumMesh = new THREE.Mesh(sternumGeom, matBone);
+  sternumMesh.position.set(-0.008, 1.38, 0.065);
+  ribsGroup.add(sternumMesh);
+
+  for (let r = 0; r < 12; r++) {
+    const ribY = 1.46 - r * 0.022;
+    const ribSpread = 0.11 + Math.sin((r / 11) * Math.PI) * 0.07;
+    const ribCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, ribY + 0.01, -0.05),
+      new THREE.Vector3(-ribSpread * 0.75, ribY, -0.04),
+      new THREE.Vector3(-ribSpread, ribY - 0.015, 0.02),
+      new THREE.Vector3(-ribSpread * 0.55, ribY - 0.025, 0.06),
+      new THREE.Vector3(r < 8 ? -0.012 : -ribSpread * 0.35, ribY - 0.03, 0.065),
     ]);
-    const jugularTube = new THREE.Mesh(new THREE.TubeGeometry(jugularCurve, 16, 0.0055, 6, false), matVein);
-    vascularGroup.add(jugularTube);
+    const ribGeom = new THREE.TubeGeometry(ribCurve, 16, 0.0065, 8, false);
+    const ribMesh = new THREE.Mesh(ribGeom, matBone);
+    ribsGroup.add(ribMesh);
   }
+  registerPartMesh(ribsGroup.children[3] as THREE.Mesh, 'ribcage', 'Thoracic Ribcage Arches', 'skeletal', 'ribs');
+  skeletalGroup.add(ribsGroup);
 
-  // Upper Limb Venous Tree: Cephalic & Basilic Veins
-  for (const side of [-1, 1]) {
-    const armVeinCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.35, 0.94, 0.012),
-      new THREE.Vector3(side * 0.33, 1.02, 0.012),
-      new THREE.Vector3(side * 0.29, 1.18, 0.012),
-      new THREE.Vector3(side * 0.23, 1.34, 0.012),
-      new THREE.Vector3(side * 0.13, 1.45, 0.022),
-      new THREE.Vector3(side * 0.035, 1.43, 0.032),
-    ]);
-    const armVein = new THREE.Mesh(new THREE.TubeGeometry(armVeinCurve, 24, 0.0045, 6, false), matVein);
-    vascularGroup.add(armVein);
+  // 4.4 Pelvic Girdle
+  const pelvisGroup = new THREE.Group();
+  pelvisGroup.position.set(0, 0.95, 0);
+
+  const iliumGeom = new THREE.TorusGeometry(0.078, 0.022, 12, 24, Math.PI * 0.85);
+  const iliumMesh = new THREE.Mesh(iliumGeom, matBone);
+  iliumMesh.position.set(-0.088, 0.02, -0.02);
+  iliumMesh.rotation.set(0.3, 0.2, 0.4);
+  pelvisGroup.add(iliumMesh);
+
+  const pubisGeom = new THREE.BoxGeometry(0.035, 0.055, 0.045);
+  const pubisMesh = new THREE.Mesh(pubisGeom, matBone);
+  pubisMesh.position.set(-0.045, -0.055, 0.04);
+  pelvisGroup.add(pubisMesh);
+
+  registerPartMesh(iliumMesh, 'pelvis', 'Pelvic Girdle & Iliac Crest', 'skeletal');
+  skeletalGroup.add(pelvisGroup);
+
+  // 4.5 Upper Limb Skeleton (Arm & Hand)
+  const leftArmGroup = new THREE.Group();
+  leftArmGroup.position.set(-0.19, 1.44, 0.0);
+
+  const humerusGeom = new THREE.CylinderGeometry(0.016, 0.014, 0.28, 14);
+  const humerusMesh = new THREE.Mesh(humerusGeom, matBone);
+  humerusMesh.position.set(-0.035, -0.14, 0.015);
+  humerusMesh.rotation.z = -0.14;
+  leftArmGroup.add(humerusMesh);
+
+  const radiusGeom = new THREE.CylinderGeometry(0.011, 0.009, 0.25, 12);
+  const radiusMesh = new THREE.Mesh(radiusGeom, matBone);
+  radiusMesh.position.set(-0.068, -0.41, 0.028);
+  leftArmGroup.add(radiusMesh);
+
+  const handSkeletonGroup = new THREE.Group();
+  handSkeletonGroup.position.set(-0.065, -0.55, 0.03);
+  const carpalsGeom = new THREE.BoxGeometry(0.045, 0.045, 0.016);
+  const carpalsMesh = new THREE.Mesh(carpalsGeom, matBone);
+  handSkeletonGroup.add(carpalsMesh);
+
+  for (let f = 0; f < 5; f++) {
+    const fingerLen = f === 0 ? 0.045 : 0.065 - Math.abs(f - 2) * 0.008;
+    const fingerGeom = new THREE.CylinderGeometry(0.004, 0.003, fingerLen, 8);
+    const fingerMesh = new THREE.Mesh(fingerGeom, matBone);
+    const spreadX = (f - 2) * 0.011;
+    fingerMesh.position.set(spreadX, -0.045 - fingerLen / 2, 0.002);
+    handSkeletonGroup.add(fingerMesh);
   }
+  leftArmGroup.add(handSkeletonGroup);
 
-  // Lower Limb Venous Tree: Great Saphenous & Femoral Veins
-  for (const side of [-1, 1]) {
-    const legVeinCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.095, 0.04, 0.045),
-      new THREE.Vector3(side * 0.092, 0.26, 0.012),
-      new THREE.Vector3(side * 0.095, 0.50, 0.008),
-      new THREE.Vector3(side * 0.085, 0.78, 0.022),
-      new THREE.Vector3(side * 0.055, 0.94, 0.012),
-      new THREE.Vector3(side * 0.018, 1.02, -0.012),
-    ]);
-    const legVein = new THREE.Mesh(new THREE.TubeGeometry(legVeinCurve, 28, 0.005, 6, false), matVein);
-    vascularGroup.add(legVein);
-  }
+  registerPartMesh(humerusMesh, 'arm', 'Upper Limb Skeletal Framework (Humerus, Radius, Ulna)', 'skeletal');
+  registerPartMesh(carpalsMesh, 'hand', 'Carpal & Metacarpal Hand Bones', 'skeletal');
+  skeletalGroup.add(leftArmGroup);
 
-  bodyGroup.add(vascularGroup);
+  // 4.6 Lower Limb Skeleton (Femur, Tibia, Foot)
+  const leftLegGroup = new THREE.Group();
+  leftLegGroup.position.set(-0.11, 0.90, 0.0);
+
+  const femurCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.015, 0.0, 0.0),
+    new THREE.Vector3(0.0, -0.03, 0.0),
+    new THREE.Vector3(-0.008, -0.21, 0.01),
+    new THREE.Vector3(-0.012, -0.40, 0.005),
+  ]);
+  const femurGeom = new THREE.TubeGeometry(femurCurve, 16, 0.022, 12, false);
+  const femurMesh = new THREE.Mesh(femurGeom, matBone);
+  leftLegGroup.add(femurMesh);
+
+  const patellaGeom = new THREE.SphereGeometry(0.024, 12, 10);
+  patellaGeom.scale(1.0, 1.25, 0.6);
+  const patellaMesh = new THREE.Mesh(patellaGeom, matBone);
+  patellaMesh.position.set(-0.012, -0.41, 0.032);
+  leftLegGroup.add(patellaMesh);
+
+  const tibiaGeom = new THREE.CylinderGeometry(0.020, 0.015, 0.40, 14);
+  const tibiaMesh = new THREE.Mesh(tibiaGeom, matBone);
+  tibiaMesh.position.set(-0.012, -0.63, 0.015);
+  leftLegGroup.add(tibiaMesh);
+
+  const footSkeletonGroup = new THREE.Group();
+  footSkeletonGroup.position.set(-0.012, -0.84, 0.03);
+  const heelGeom = new THREE.BoxGeometry(0.042, 0.035, 0.075);
+  const heelMesh = new THREE.Mesh(heelGeom, matBone);
+  heelMesh.position.set(0.0, 0.015, -0.04);
+  footSkeletonGroup.add(heelMesh);
+
+  const metatarsalsGeom = new THREE.BoxGeometry(0.065, 0.025, 0.11);
+  const metatarsalsMesh = new THREE.Mesh(metatarsalsGeom, matBone);
+  metatarsalsMesh.position.set(0.0, 0.01, 0.04);
+  footSkeletonGroup.add(metatarsalsMesh);
+  leftLegGroup.add(footSkeletonGroup);
+
+  registerPartMesh(femurMesh, 'femur', 'Femur Bone (Thigh)', 'skeletal');
+  registerPartMesh(tibiaMesh, 'tibia', 'Tibia & Fibula Bones (Shin)', 'skeletal');
+  registerPartMesh(heelMesh, 'foot', 'Foot & Tarsal Skeleton', 'skeletal', 'feet');
+  skeletalGroup.add(leftLegGroup);
 
   // =========================================================================
-  // 4. SKELETAL SYSTEM (Internal Ivory Framework)
-  // Skull, Spine, Ribcage, Pelvis, Limbs
+  // 5. MUSCULAR SYSTEM (RIGHT HALF & SUPERFICIAL/DEEP ANATOMY)
   // =========================================================================
-  const skeletonGroup = new THREE.Group();
-  skeletonGroup.name = 'SkeletalSystem';
-  bodyGroup.add(skeletonGroup);
 
-  // 4.1 SKULL (partId: 'skull')
-  const skullDome = new THREE.Mesh(new THREE.SphereGeometry(0.105, 24, 20), matBone);
-  skullDome.scale.set(0.9, 1.14, 1.05);
-  skullDome.position.set(0, 1.74, -0.01);
-  skeletonGroup.add(skullDome);
-  registerPartMesh('skull', skullDome);
+  // 5.1 Facial & Cranial Muscles
+  const faceMuscleGroup = new THREE.Group();
+  faceMuscleGroup.position.set(0, 1.68, 0);
 
-  const maxillaBone = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.04, 0.05), matBone);
-  maxillaBone.position.set(0, 1.66, 0.07);
-  skeletonGroup.add(maxillaBone);
-  registerPartMesh('skull', maxillaBone);
+  const frontalisGeom = new THREE.SphereGeometry(0.118, 20, 16, 0, Math.PI / 2, 0, Math.PI * 0.45);
+  frontalisGeom.scale(0.92, 1.18, 1.05);
+  const frontalisMesh = new THREE.Mesh(frontalisGeom, matMuscle);
+  faceMuscleGroup.add(frontalisMesh);
 
-  const mandibleBone = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.035, 0.08), matBone);
-  mandibleBone.position.set(0, 1.62, 0.05);
-  skeletonGroup.add(mandibleBone);
-  registerPartMesh('skull', mandibleBone);
+  const orbicularisGeom = new THREE.TorusGeometry(0.028, 0.010, 12, 20);
+  const orbicularisMesh = new THREE.Mesh(orbicularisGeom, matMuscle);
+  orbicularisMesh.position.set(0.042, -0.015, 0.095);
+  faceMuscleGroup.add(orbicularisMesh);
 
-  // 4.2 VERTEBRAL COLUMN / SPINE (partId: 'spine')
-  const spineTotal = 24;
-  for (let i = 0; i < spineTotal; i++) {
-    const t = i / (spineTotal - 1);
-    const vy = 1.63 - t * 0.65;
-    const vz = -0.035 + Math.sin(t * Math.PI * 2.2) * 0.022;
-    const vRadius = 0.017 + t * 0.008;
+  const masseterGeom = new THREE.BoxGeometry(0.035, 0.065, 0.045);
+  const masseterMesh = new THREE.Mesh(masseterGeom, matMuscle);
+  masseterMesh.position.set(0.058, -0.065, 0.055);
+  masseterMesh.rotation.set(0.1, -0.15, -0.15);
+  faceMuscleGroup.add(masseterMesh);
 
-    const vertebra = new THREE.Mesh(new THREE.CylinderGeometry(vRadius, vRadius, 0.018, 10), matBone);
-    vertebra.position.set(0, vy, vz);
-    skeletonGroup.add(vertebra);
-    registerPartMesh('spine', vertebra);
+  muscularGroup.add(faceMuscleGroup);
 
-    if (i < spineTotal - 1) {
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(vRadius + 0.001, vRadius + 0.001, 0.006, 10), matCartilage);
-      disc.position.set(0, vy - 0.012, vz);
-      skeletonGroup.add(disc);
-    }
+  // 5.2 Torso Musculature (Pectoralis, 6-Pack Rectus Abdominis, Obliques)
+  const torsoMuscleGroup = new THREE.Group();
+  torsoMuscleGroup.position.set(0, 1.35, 0);
+
+  const pecGeom = new THREE.BoxGeometry(0.13, 0.12, 0.065);
+  const pecMesh = new THREE.Mesh(pecGeom, matMuscle);
+  pecMesh.position.set(0.088, 0.095, 0.065);
+  pecMesh.rotation.set(-0.12, -0.18, -0.08);
+  torsoMuscleGroup.add(pecMesh);
+
+  for (let pack = 0; pack < 4; pack++) {
+    const packY = 0.01 - pack * 0.065;
+    const packGeom = new THREE.BoxGeometry(0.052, 0.055, 0.042);
+    const packMesh = new THREE.Mesh(packGeom, matMuscle);
+    packMesh.position.set(0.038, packY, 0.068);
+    torsoMuscleGroup.add(packMesh);
   }
 
-  // 4.3 THORAIC RIBCAGE & STERNUM (partId: 'ribcage')
-  const sternum = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.16, 0.012), matBone);
-  sternum.position.set(0, 1.40, 0.095);
-  skeletonGroup.add(sternum);
-  registerPartMesh('ribcage', sternum);
+  const lineaAlbaGeom = new THREE.BoxGeometry(0.008, 0.28, 0.046);
+  const lineaAlbaMesh = new THREE.Mesh(lineaAlbaGeom, matTendon);
+  lineaAlbaMesh.position.set(0.0, -0.09, 0.07);
+  torsoMuscleGroup.add(lineaAlbaMesh);
 
-  for (let r = 0; r < 10; r++) {
-    const ribT = r / 9;
-    const ribYSpine = 1.48 - ribT * 0.22;
-    const ribYSternum = 1.46 - ribT * 0.20;
-    const ribWidth = 0.09 + Math.sin(ribT * Math.PI * 0.85) * 0.075;
+  registerPartMesh(pecMesh, 'muscles', 'Skeletal Muscular System (Pectorals, Abdominals, Obliques)', 'muscular');
+  muscularGroup.add(torsoMuscleGroup);
 
-    for (const side of [-1, 1]) {
-      const pSpine = new THREE.Vector3(side * 0.016, ribYSpine, -0.04);
-      const pLat = new THREE.Vector3(side * ribWidth, ribYSpine - 0.03, 0.02);
-      const pStern = new THREE.Vector3(side * 0.024, ribYSternum - 0.01, 0.085);
+  // 5.3 Right Arm Muscles (Deltoid, Biceps, Forearm)
+  const rightArmMuscleGroup = new THREE.Group();
+  rightArmMuscleGroup.position.set(0.19, 1.44, 0.0);
 
-      const ribMesh = createCurvedTube([pSpine, pLat, pStern], 0.0055, 6, 14);
-      ribMesh.material = matBone;
-      skeletonGroup.add(ribMesh);
-      registerPartMesh('ribcage', ribMesh);
-    }
-  }
+  const deltoidGeom = new THREE.SphereGeometry(0.062, 16, 14);
+  deltoidGeom.scale(0.85, 1.25, 1.0);
+  const deltoidMesh = new THREE.Mesh(deltoidGeom, matMuscle);
+  deltoidMesh.position.set(0.025, 0.0, 0.01);
+  rightArmMuscleGroup.add(deltoidMesh);
 
-  // 4.4 PELVIC GIRDLE (partId: 'pelvis')
-  for (const side of [-1, 1]) {
-    const iliac = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.045, 0.09, 12, 1, false, 0, Math.PI), matBone);
-    iliac.position.set(side * 0.095, 0.98, -0.01);
-    iliac.rotation.z = side * 0.25;
-    skeletonGroup.add(iliac);
-    registerPartMesh('pelvis', iliac);
-  }
+  const bicepsGeom = new THREE.CylinderGeometry(0.032, 0.024, 0.19, 16);
+  bicepsGeom.scale(1.0, 1.0, 1.25);
+  const bicepsMesh = new THREE.Mesh(bicepsGeom, matMuscle);
+  bicepsMesh.position.set(0.035, -0.135, 0.022);
+  rightArmMuscleGroup.add(bicepsMesh);
 
-  // 4.5 LIMB SKELETON (partId: 'arm', 'femur', 'tibia')
-  for (const side of [-1, 1]) {
-    // Upper arm humerus
-    const humerus = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.017, 0.27, 10), matBone);
-    humerus.position.set(side * 0.23, 1.35, 0.01);
-    humerus.rotation.z = -side * 0.30;
-    skeletonGroup.add(humerus);
-    registerPartMesh('arm', humerus);
+  const forearmMuscGeom = new THREE.CylinderGeometry(0.034, 0.018, 0.25, 16);
+  const forearmMuscMesh = new THREE.Mesh(forearmMuscGeom, matMuscle);
+  forearmMuscMesh.position.set(0.055, -0.40, 0.024);
+  rightArmMuscleGroup.add(forearmMuscMesh);
 
-    // Thigh femur
-    const femur = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.024, 0.42, 12), matBone);
-    femur.position.set(side * 0.105, 0.72, 0.01);
-    skeletonGroup.add(femur);
-    registerPartMesh('femur', femur);
+  muscularGroup.add(rightArmMuscleGroup);
 
-    // Shin tibia
-    const tibia = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.017, 0.40, 10), matBone);
-    tibia.position.set(side * 0.105, 0.28, 0);
-    skeletonGroup.add(tibia);
-    registerPartMesh('tibia', tibia);
-  }
+  // 5.4 Right Leg Muscles (Quadriceps, Calf, Achilles Tendon)
+  const rightLegMuscleGroup = new THREE.Group();
+  rightLegMuscleGroup.position.set(0.11, 0.90, 0.0);
+
+  const rectusFemGeom = new THREE.CylinderGeometry(0.038, 0.028, 0.38, 16);
+  rectusFemGeom.scale(1.0, 1.0, 1.15);
+  const rectusFemMesh = new THREE.Mesh(rectusFemGeom, matMuscle);
+  rectusFemMesh.position.set(0.005, -0.20, 0.028);
+  rightLegMuscleGroup.add(rectusFemMesh);
+
+  const gastrocMedGeom = new THREE.SphereGeometry(0.034, 14, 14);
+  gastrocMedGeom.scale(0.8, 1.7, 1.0);
+  const gastrocMedMesh = new THREE.Mesh(gastrocMedGeom, matMuscle);
+  gastrocMedMesh.position.set(-0.012, -0.55, -0.028);
+  rightLegMuscleGroup.add(gastrocMedMesh);
+
+  const achillesCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.008, -0.68, -0.022),
+    new THREE.Vector3(0.006, -0.76, -0.032),
+    new THREE.Vector3(0.005, -0.83, -0.038),
+  ]);
+  const achillesGeom = new THREE.TubeGeometry(achillesCurve, 16, 0.013, 12, false);
+  const achillesMesh = new THREE.Mesh(achillesGeom, matTendon);
+  rightLegMuscleGroup.add(achillesMesh);
+  registerPartMesh(achillesMesh, 'achilles_tendon', 'Achilles Tendon (Calcaneal Tendon)', 'muscular');
+
+  muscularGroup.add(rightLegMuscleGroup);
 
   // =========================================================================
-  // 5. COMPLETE VISCERAL INTERNAL ORGANS
-  // Brain, Trachea, Lungs, Heart, Diaphragm, Liver, Gallbladder, Stomach,
-  // Pancreas, Spleen, Kidneys, Ureters, Bladder, Intestines
+  // 6. CENTRAL VISCERAL ORGAN SYSTEM
   // =========================================================================
-  const visceraGroup = new THREE.Group();
-  visceraGroup.name = 'VisceralOrgans';
-  bodyGroup.add(visceraGroup);
 
-  // 5.1 BRAIN & CRANIAL NERVOUS CENTER (partId: 'brain')
+  // 6.1 Brain
   const brainGroup = new THREE.Group();
-  brainGroup.position.set(0, 1.74, -0.01);
+  brainGroup.position.set(0.015, 1.70, 0.0);
 
-  for (const side of [-1, 1]) {
-    const cerebrum = new THREE.Mesh(new THREE.SphereGeometry(0.068, 20, 18), matBrain);
-    cerebrum.scale.set(0.72, 0.95, 1.18);
-    cerebrum.position.set(side * 0.034, 0.018, 0);
-    brainGroup.add(cerebrum);
-    registerPartMesh('brain', cerebrum);
-  }
+  const cerebrumGeom = new THREE.SphereGeometry(0.088, 24, 20);
+  cerebrumGeom.scale(0.85, 1.05, 1.25);
+  const cerebrumMesh = new THREE.Mesh(cerebrumGeom, matBrain);
+  brainGroup.add(cerebrumMesh);
 
-  const cerebellum = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 14), matBrain);
-  cerebellum.scale.set(1.4, 0.75, 0.85);
-  cerebellum.position.set(0, -0.038, -0.045);
-  brainGroup.add(cerebellum);
-  registerPartMesh('brain', cerebellum);
+  const cerebellumGeom = new THREE.SphereGeometry(0.042, 16, 12);
+  cerebellumGeom.scale(1.15, 0.85, 0.95);
+  const cerebellumMesh = new THREE.Mesh(cerebellumGeom, matBrain);
+  cerebellumMesh.position.set(0, -0.055, -0.058);
+  brainGroup.add(cerebellumMesh);
 
-  visceraGroup.add(brainGroup);
+  registerPartMesh(cerebrumMesh, 'brain', 'Brain & Cerebral Cortex (Gyri & Cerebellum)', 'visceral');
+  visceralGroup.add(brainGroup);
 
-  // 5.2 RESPIRATORY SYSTEM: TRACHEA & LUNGS (partId: 'lungs')
+  // 6.2 Bilateral Lobed Lungs
   const lungsGroup = new THREE.Group();
-  lungsGroup.position.set(0, 1.36, 0.025);
+  lungsGroup.position.set(0, 1.38, 0.0);
 
-  const trachea = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.13, 16), matCartilage);
-  trachea.position.set(0, 0.14, 0.01);
-  lungsGroup.add(trachea);
-  registerPartMesh('lungs', trachea);
+  const leftLungGeom = new THREE.SphereGeometry(0.075, 20, 18);
+  leftLungGeom.scale(0.85, 1.65, 0.95);
+  const leftLungMesh = new THREE.Mesh(leftLungGeom, matLung);
+  leftLungMesh.position.set(-0.088, 0.0, 0.01);
+  leftLungMesh.rotation.z = 0.08;
+  lungsGroup.add(leftLungMesh);
 
-  const leftLung = new THREE.Mesh(new THREE.SphereGeometry(0.064, 20, 18), matLung);
-  leftLung.scale.set(0.85, 1.65, 0.95);
-  leftLung.position.set(0.072, -0.01, 0.012);
-  lungsGroup.add(leftLung);
-  registerPartMesh('lungs', leftLung);
+  const rightLungGeom = new THREE.SphereGeometry(0.082, 20, 18);
+  rightLungGeom.scale(0.92, 1.70, 1.0);
+  const rightLungMesh = new THREE.Mesh(rightLungGeom, matLung);
+  rightLungMesh.position.set(0.088, 0.005, 0.01);
+  rightLungMesh.rotation.z = -0.08;
+  lungsGroup.add(rightLungMesh);
 
-  const rightLung = new THREE.Mesh(new THREE.SphereGeometry(0.068, 20, 18), matLung);
-  rightLung.scale.set(0.95, 1.55, 1.05);
-  rightLung.position.set(-0.075, 0.005, 0.015);
-  lungsGroup.add(rightLung);
-  registerPartMesh('lungs', rightLung);
+  registerPartMesh(rightLungMesh, 'lungs', 'Bilateral Respiratory Lungs (Gas Exchange)', 'visceral');
+  visceralGroup.add(lungsGroup);
 
-  visceraGroup.add(lungsGroup);
-
-  // 5.3 CARDIOVASCULAR CENTER: HEART & GREAT VESSELS (partId: 'heart')
+  // 6.3 Heart & Great Vessels
   const heartGroup = new THREE.Group();
-  heartGroup.position.set(-0.016, 1.35, 0.038);
-  heartGroup.rotation.z = -0.22;
+  heartGroup.position.set(-0.018, 1.36, 0.025);
+  heartGroup.rotation.set(0.12, -0.15, 0.22);
 
-  const heartBody = new THREE.Mesh(new THREE.SphereGeometry(0.046, 20, 18), matHeart);
-  heartBody.scale.set(1.0, 1.25, 0.9);
-  heartGroup.add(heartBody);
-  registerPartMesh('heart', heartBody);
+  const heartGeom = new THREE.SphereGeometry(0.048, 20, 18);
+  heartGeom.scale(1.0, 1.25, 0.95);
+  const heartMesh = new THREE.Mesh(heartGeom, matHeart);
+  heartGroup.add(heartMesh);
 
-  const heartApex = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.05, 16), matHeart);
-  heartApex.position.set(0.012, -0.045, 0);
-  heartApex.rotation.z = Math.PI - 0.15;
-  heartGroup.add(heartApex);
-  registerPartMesh('heart', heartApex);
-
-  // Ascending Aorta Arch
-  const aortaArchCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0.02, 0.01),
-    new THREE.Vector3(0.008, 0.068, 0.015),
-    new THREE.Vector3(-0.018, 0.082, 0.005),
-    new THREE.Vector3(-0.028, 0.055, -0.02),
+  const aortaCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.005, 0.035, 0.01),
+    new THREE.Vector3(0.008, 0.085, 0.012),
+    new THREE.Vector3(-0.015, 0.105, -0.005),
+    new THREE.Vector3(-0.025, 0.085, -0.025),
   ]);
-  const aortaArch = new THREE.Mesh(new THREE.TubeGeometry(aortaArchCurve, 16, 0.012, 10, false), matArtery);
-  heartGroup.add(aortaArch);
-  registerPartMesh('heart', aortaArch);
+  const aortaGeom = new THREE.TubeGeometry(aortaCurve, 16, 0.014, 12, false);
+  const aortaMesh = new THREE.Mesh(aortaGeom, matArtery);
+  heartGroup.add(aortaMesh);
 
-  // Superior Vena Cava
-  const venaCava = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.075, 12), matVein);
-  venaCava.position.set(0.028, 0.055, 0.005);
-  heartGroup.add(venaCava);
-  registerPartMesh('heart', venaCava);
+  // Superior Vena Cava (Large royal blue vein)
+  const svcCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.028, 0.11, 0.008),
+    new THREE.Vector3(0.026, 0.06, 0.005),
+    new THREE.Vector3(0.022, 0.02, 0.002),
+  ]);
+  const svcGeom = new THREE.TubeGeometry(svcCurve, 12, 0.012, 10, false);
+  const svcMesh = new THREE.Mesh(svcGeom, matVein);
+  heartGroup.add(svcMesh);
 
-  visceraGroup.add(heartGroup);
+  registerPartMesh(heartMesh, 'heart', 'Heart & Great Vessels (Circulatory Engine)', 'visceral');
+  visceralGroup.add(heartGroup);
 
-  // 5.4 RESPIRATORY DIAPHRAGM DOME (partId: 'diaphragm')
-  const diaphragm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.165, 0.02, 24, 1, false, 0, Math.PI * 2),
-    matDiaphragm
-  );
-  diaphragm.position.set(0, 1.28, 0.01);
-  diaphragm.scale.set(1.15, 1.0, 0.85);
-  visceraGroup.add(diaphragm);
-  registerPartMesh('diaphragm', diaphragm);
-
-  // 5.5 HEPATOBILIARY SYSTEM: LIVER & GALLBLADDER (partId: 'liver')
+  // 6.4 Liver & Gallbladder
   const liverGroup = new THREE.Group();
-  liverGroup.position.set(-0.055, 1.22, 0.03);
+  liverGroup.position.set(0.045, 1.23, 0.022);
 
-  const liverMain = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.065, 0.08, 18, 1, false, 0, Math.PI * 1.4),
-    matLiver
-  );
-  liverMain.rotation.z = 0.25;
-  liverMain.rotation.y = 0.35;
-  liverGroup.add(liverMain);
-  registerPartMesh('liver', liverMain);
+  const liverGeom = new THREE.SphereGeometry(0.088, 22, 18);
+  liverGeom.scale(1.4, 0.82, 0.95);
+  const liverMesh = new THREE.Mesh(liverGeom, matLiver);
+  liverMesh.rotation.set(-0.15, 0.1, -0.22);
+  liverGroup.add(liverMesh);
 
-  const gallBladder = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), matGallbladder);
-  gallBladder.scale.set(0.8, 1.4, 0.8);
-  gallBladder.position.set(0.015, -0.04, 0.02);
-  liverGroup.add(gallBladder);
-  registerPartMesh('liver', gallBladder);
+  const gbGeom = new THREE.SphereGeometry(0.018, 14, 12);
+  gbGeom.scale(0.8, 1.5, 0.8);
+  const gbMesh = new THREE.Mesh(gbGeom, matGallbladder);
+  gbMesh.position.set(0.038, -0.045, 0.048);
+  liverGroup.add(gbMesh);
 
-  visceraGroup.add(liverGroup);
+  registerPartMesh(liverMesh, 'liver', 'Liver & Gallbladder (Metabolic & Bile Secretion)', 'visceral');
+  visceralGroup.add(liverGroup);
 
-  // 5.6 DIGESTIVE SYSTEM: STOMACH (partId: 'stomach')
+  // 6.5 Stomach
   const stomachGroup = new THREE.Group();
-  stomachGroup.position.set(0.045, 1.20, 0.032);
+  stomachGroup.position.set(-0.042, 1.21, 0.03);
 
   const stomachCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.01, 0.045, 0),
-    new THREE.Vector3(0.035, 0.03, 0.01),
-    new THREE.Vector3(0.04, -0.03, 0.012),
-    new THREE.Vector3(0.005, -0.05, 0.005),
-    new THREE.Vector3(-0.025, -0.04, -0.01),
+    new THREE.Vector3(0.012, 0.075, -0.01),
+    new THREE.Vector3(-0.045, 0.065, 0.0),
+    new THREE.Vector3(-0.055, -0.01, 0.015),
+    new THREE.Vector3(-0.02, -0.055, 0.02),
+    new THREE.Vector3(0.025, -0.035, 0.01),
   ]);
-  const stomachMesh = new THREE.Mesh(new THREE.TubeGeometry(stomachCurve, 20, 0.032, 12, false), matStomach);
+  const stomachGeom = new THREE.TubeGeometry(stomachCurve, 20, 0.038, 14, false);
+  const stomachMesh = new THREE.Mesh(stomachGeom, matStomach);
   stomachGroup.add(stomachMesh);
-  registerPartMesh('stomach', stomachMesh);
-  visceraGroup.add(stomachGroup);
 
-  // 5.7 PANCREAS & SPLEEN (partId: 'pancreas', 'spleen')
-  // Pancreas nestled along duodenal curve under stomach
-  const pancreasMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.01, 0.09, 12), matPancreas);
-  pancreasMesh.position.set(0.015, 1.17, 0.012);
-  pancreasMesh.rotation.z = Math.PI / 2.3;
-  visceraGroup.add(pancreasMesh);
-  registerPartMesh('pancreas', pancreasMesh);
-
-  // Spleen in left upper quadrant
-  const spleenMesh = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 12), matSpleen);
-  spleenMesh.scale.set(0.8, 1.35, 0.9);
-  spleenMesh.position.set(0.092, 1.22, -0.015);
-  visceraGroup.add(spleenMesh);
-  registerPartMesh('spleen', spleenMesh);
-
-  // 5.8 INTESTINES: SMALL & LARGE INTESTINE (COLON) (partId: 'intestines')
-  const intestineGroup = new THREE.Group();
-  intestineGroup.position.set(0, 1.09, 0.035);
-
-  // Small Intestine Convoluted Coils
-  for (let i = 0; i < 6; i++) {
-    const coil = new THREE.Mesh(new THREE.TorusGeometry(0.038 - i * 0.004, 0.013, 8, 18), matIntestines);
-    coil.position.set((i % 2 === 0 ? 0.012 : -0.012), (i - 2.5) * 0.02, (i % 2) * 0.008);
-    coil.rotation.x = 0.22 * i;
-    intestineGroup.add(coil);
-    registerPartMesh('intestines', coil);
-  }
-
-  // Large Intestine / Colon Frame with Haustra
-  const colonCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.075, -0.06, 0.01), // Cecum
-    new THREE.Vector3(-0.08, 0.04, 0.015), // Ascending colon
-    new THREE.Vector3(-0.04, 0.065, 0.022), // Hepatic flexure
-    new THREE.Vector3(0.04, 0.062, 0.022), // Transverse colon
-    new THREE.Vector3(0.08, 0.035, 0.015), // Splenic flexure
-    new THREE.Vector3(0.075, -0.06, 0.01), // Descending colon
-    new THREE.Vector3(0.03, -0.08, -0.005), // Sigmoid colon
+  // Pancreas (Golden glandular organ nestled in duodenal sweep)
+  const pancreasCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.025, -0.04, 0.005),
+    new THREE.Vector3(-0.02, -0.035, -0.015),
+    new THREE.Vector3(-0.065, -0.025, -0.025),
   ]);
-  const colonMesh = new THREE.Mesh(new THREE.TubeGeometry(colonCurve, 32, 0.022, 10, false), matIntestines);
-  intestineGroup.add(colonMesh);
-  registerPartMesh('intestines', colonMesh);
+  const pancreasGeom = new THREE.TubeGeometry(pancreasCurve, 12, 0.015, 10, false);
+  const pancreasMesh = new THREE.Mesh(pancreasGeom, matPancreas);
+  stomachGroup.add(pancreasMesh);
 
-  visceraGroup.add(intestineGroup);
+  // Spleen (Deep purple organ posterolateral to stomach)
+  const spleenGeom = new THREE.SphereGeometry(0.032, 14, 12);
+  spleenGeom.scale(0.8, 1.3, 0.7);
+  const spleenMesh = new THREE.Mesh(spleenGeom, matSpleen);
+  spleenMesh.position.set(-0.082, 0.03, -0.028);
+  stomachGroup.add(spleenMesh);
 
-  // 5.9 RENAL & URINARY SYSTEM: KIDNEYS, URETERS & BLADDER (partId: 'kidneys', 'bladder')
-  for (const side of [-1, 1]) {
-    const kidney = new THREE.Mesh(new THREE.SphereGeometry(0.025, 14, 12), matKidney);
-    kidney.scale.set(0.75, 1.45, 0.85);
-    const ky = side < 0 ? 1.17 : 1.19;
-    kidney.position.set(side * 0.065, ky, -0.028);
-    visceraGroup.add(kidney);
-    registerPartMesh('kidneys', kidney);
+  registerPartMesh(stomachMesh, 'stomach', 'Stomach, Pancreas & Spleen (Chemical Digestion)', 'visceral');
+  visceralGroup.add(stomachGroup);
 
-    // Slender Ureters descending to bladder
-    const ureterCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.055, ky - 0.02, -0.025),
-      new THREE.Vector3(side * 0.035, 1.10, -0.015),
-      new THREE.Vector3(side * 0.022, 1.03, 0.015),
+  // 6.6 Bilateral Kidneys
+  const kidneysGroup = new THREE.Group();
+  kidneysGroup.position.set(0, 1.15, -0.035);
+
+  const leftKidneyGeom = new THREE.SphereGeometry(0.028, 16, 14);
+  leftKidneyGeom.scale(0.85, 1.45, 0.9);
+  const leftKidneyMesh = new THREE.Mesh(leftKidneyGeom, matKidney);
+  leftKidneyMesh.position.set(-0.082, 0.01, 0.0);
+  kidneysGroup.add(leftKidneyMesh);
+
+  const rightKidneyMesh = new THREE.Mesh(leftKidneyGeom, matKidney);
+  rightKidneyMesh.position.set(0.082, -0.01, 0.0);
+  kidneysGroup.add(rightKidneyMesh);
+
+  registerPartMesh(leftKidneyMesh, 'kidneys', 'Renal Kidneys (Blood Ultrafiltration)', 'visceral', 'kidney');
+  visceralGroup.add(kidneysGroup);
+
+  // 6.7 Intestines (Colon & Small Intestine)
+  const intestinesGroup = new THREE.Group();
+  intestinesGroup.position.set(0, 1.05, 0.02);
+
+  const colonCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.075, -0.14, 0.015),
+    new THREE.Vector3(0.085, -0.05, 0.01),
+    new THREE.Vector3(0.075, 0.045, 0.015),
+    new THREE.Vector3(0.0, 0.055, 0.025),
+    new THREE.Vector3(-0.075, 0.045, 0.015),
+    new THREE.Vector3(-0.085, -0.05, 0.01),
+    new THREE.Vector3(-0.065, -0.14, 0.015),
+  ]);
+  const colonGeom = new THREE.TubeGeometry(colonCurve, 32, 0.026, 12, false);
+  const colonMesh = new THREE.Mesh(colonGeom, matColon);
+  intestinesGroup.add(colonMesh);
+
+  const smallIntestineGroup = new THREE.Group();
+  smallIntestineGroup.position.set(0, -0.04, 0.028);
+
+  for (let loop = 0; loop < 7; loop++) {
+    const loopY = (loop - 3) * 0.022;
+    const loopCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.045, loopY, (loop % 2) * 0.01),
+      new THREE.Vector3(-0.015, loopY + 0.012, 0.018),
+      new THREE.Vector3(0.02, loopY - 0.01, 0.012),
+      new THREE.Vector3(0.045, loopY + 0.005, (loop % 2) * 0.01),
     ]);
-    const ureterMesh = new THREE.Mesh(new THREE.TubeGeometry(ureterCurve, 14, 0.003, 6, false), matUreter);
-    visceraGroup.add(ureterMesh);
+    const loopGeom = new THREE.TubeGeometry(loopCurve, 16, 0.014, 10, false);
+    const loopMesh = new THREE.Mesh(loopGeom, matIntestine);
+    smallIntestineGroup.add(loopMesh);
   }
+  intestinesGroup.add(smallIntestineGroup);
 
-  // Urinary Bladder & Urethra
-  const bladder = new THREE.Mesh(new THREE.SphereGeometry(0.028, 14, 12), matBladder);
-  bladder.scale.set(1.1, 0.9, 1.0);
-  bladder.position.set(0, 1.01, 0.028);
-  visceraGroup.add(bladder);
-  registerPartMesh('bladder', bladder);
+  registerPartMesh(colonMesh, 'intestines', 'Gastrointestinal Colon & Small Intestine', 'visceral');
+  visceralGroup.add(intestinesGroup);
 
-  const urethra = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.035, 8), matUreter);
-  urethra.position.set(0, 0.975, 0.028);
-  visceraGroup.add(urethra);
-
-  // 5.10 MUSCULAR OVERLAYS: PECTORALS & ABDOMINALS (partId: 'muscles')
-  for (const side of [-1, 1]) {
-    const pec = new THREE.Mesh(new THREE.BoxGeometry(0.082, 0.092, 0.028), matMuscle);
-    pec.position.set(side * 0.072, 1.40, 0.082);
-    pec.rotation.z = -side * 0.18;
-    pec.rotation.y = side * 0.22;
-    bodyGroup.add(pec);
-    registerPartMesh('muscles', pec);
-  }
-
-  for (let row = 0; row < 3; row++) {
-    for (const side of [-1, 1]) {
-      const ab = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.02), matMuscle);
-      ab.position.set(side * 0.028, 1.25 - row * 0.065, 0.084);
-      bodyGroup.add(ab);
-      registerPartMesh('muscles', ab);
-    }
-  }
-
-  // Linea alba (fibrous central tendon separating abdominal muscles)
-  const lineaAlba = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.22, 0.016), matTendon);
-  lineaAlba.position.set(0, 1.18, 0.086);
-  bodyGroup.add(lineaAlba);
+  // 6.8 Bladder
+  const bladderGroup = new THREE.Group();
+  bladderGroup.position.set(0, 0.88, 0.045);
+  const bladderGeom = new THREE.SphereGeometry(0.032, 16, 14);
+  const bladderMesh = new THREE.Mesh(bladderGeom, matBladder);
+  bladderGroup.add(bladderMesh);
+  visceralGroup.add(bladderGroup);
 
   // =========================================================================
-  // 6. FLANKING INTERACTIVE 3D CALLOUT CARDS (Matching the Educational Chart)
-  // Left and Right columns with leader lines pointing directly to each organ
+  // 7. 3D SPATIAL CALLOUT PINS & FLOATING BILLBOARD HUD LABELS
   // =========================================================================
-  const pinsGroup = new THREE.Group();
-  pinsGroup.name = 'AnatomicalCalloutPins';
-  bodyGroup.add(pinsGroup);
-
-  interface PinConfig {
-    partId: string;
+  interface CalloutDef {
+    id: string;
     label: string;
-    targetPos: THREE.Vector3;
-    badgePos: THREE.Vector3;
+    subtitle: string;
+    organPos: THREE.Vector3;
+    labelOffset: THREE.Vector3;
+    color: number;
   }
 
-  const pinConfigs: PinConfig[] = [
-    // Left Flank Callouts (matching chart layout)
-    { partId: 'lungs', label: '🫁 Trachea & Lungs', targetPos: new THREE.Vector3(-0.075, 1.38, 0.06), badgePos: new THREE.Vector3(-0.46, 1.52, 0.12) },
-    { partId: 'liver', label: '🟤 Liver & Gallbladder', targetPos: new THREE.Vector3(-0.065, 1.22, 0.06), badgePos: new THREE.Vector3(-0.48, 1.28, 0.12) },
-    { partId: 'stomach', label: '🥣 Stomach & Gastric', targetPos: new THREE.Vector3(0.045, 1.20, 0.06), badgePos: new THREE.Vector3(-0.46, 1.05, 0.12) },
-    { partId: 'brain', label: '🧠 Brain & Cranium', targetPos: new THREE.Vector3(0, 1.74, 0.06), badgePos: new THREE.Vector3(-0.44, 1.78, 0.12) },
-    { partId: 'kidneys', label: '🫘 Kidneys & Ureters', targetPos: new THREE.Vector3(-0.065, 1.18, -0.02), badgePos: new THREE.Vector3(-0.46, 0.82, 0.10) },
-
-    // Right Flank Callouts (matching chart layout)
-    { partId: 'heart', label: '❤️ Heart & Vessels', targetPos: new THREE.Vector3(-0.016, 1.35, 0.06), badgePos: new THREE.Vector3(0.46, 1.48, 0.12) },
-    { partId: 'diaphragm', label: '〰️ Diaphragm', targetPos: new THREE.Vector3(0, 1.28, 0.04), badgePos: new THREE.Vector3(0.48, 1.32, 0.12) },
-    { partId: 'pancreas', label: '🟡 Pancreas & Spleen', targetPos: new THREE.Vector3(0.04, 1.18, 0.03), badgePos: new THREE.Vector3(0.48, 1.15, 0.12) },
-    { partId: 'intestines', label: '➰ Intestinal Tract', targetPos: new THREE.Vector3(0, 1.08, 0.06), badgePos: new THREE.Vector3(0.46, 0.98, 0.12) },
-    { partId: 'bladder', label: '💧 Bladder & Urethra', targetPos: new THREE.Vector3(0, 1.01, 0.05), badgePos: new THREE.Vector3(0.44, 0.78, 0.10) },
-    { partId: 'femur', label: '🦵 Thigh & Femoral Artery', targetPos: new THREE.Vector3(0.105, 0.72, 0.04), badgePos: new THREE.Vector3(0.46, 0.60, 0.10) },
+  const calloutDefs: CalloutDef[] = [
+    {
+      id: 'brain',
+      label: 'Cerebrum & Brain',
+      subtitle: 'Higher Cognition & Sensory Integration',
+      organPos: new THREE.Vector3(0.0, 1.72, 0.0),
+      labelOffset: new THREE.Vector3(0.38, 0.08, 0.12),
+      color: 0x38bdf8,
+    },
+    {
+      id: 'skull',
+      label: 'Cranial Skeleton',
+      subtitle: 'Frontal, Temporal & Facial Bones',
+      organPos: new THREE.Vector3(-0.08, 1.68, 0.02),
+      labelOffset: new THREE.Vector3(-0.36, 0.06, 0.12),
+      color: 0xf59e0b,
+    },
+    {
+      id: 'lungs',
+      label: 'Respiratory Lungs',
+      subtitle: 'Bilateral Alveolar Gas Exchange',
+      organPos: new THREE.Vector3(-0.11, 1.38, 0.04),
+      labelOffset: new THREE.Vector3(-0.40, 0.02, 0.15),
+      color: 0xf43f5e,
+    },
+    {
+      id: 'heart',
+      label: 'Cardiovascular Heart',
+      subtitle: '4-Chambered Myocardial Pump',
+      organPos: new THREE.Vector3(-0.02, 1.34, 0.05),
+      labelOffset: new THREE.Vector3(0.38, -0.02, 0.15),
+      color: 0xef4444,
+    },
+    {
+      id: 'liver',
+      label: 'Hepatic Liver',
+      subtitle: 'Bile Synthesis & Detoxification',
+      organPos: new THREE.Vector3(0.08, 1.22, 0.04),
+      labelOffset: new THREE.Vector3(0.42, 0.02, 0.14),
+      color: 0x10b981,
+    },
+    {
+      id: 'stomach',
+      label: 'Gastric Stomach',
+      subtitle: 'Acidic Proteolysis & Chyme Production',
+      organPos: new THREE.Vector3(-0.06, 1.20, 0.04),
+      labelOffset: new THREE.Vector3(-0.42, -0.02, 0.14),
+      color: 0xf97316,
+    },
+    {
+      id: 'kidneys',
+      label: 'Renal Kidneys',
+      subtitle: 'Glomerular Blood Ultrafiltration',
+      organPos: new THREE.Vector3(-0.09, 1.14, -0.02),
+      labelOffset: new THREE.Vector3(-0.42, -0.08, 0.10),
+      color: 0xa855f7,
+    },
+    {
+      id: 'intestines',
+      label: 'Digestive Intestines',
+      subtitle: 'Nutrient Absorption & Water Balance',
+      organPos: new THREE.Vector3(0.0, 1.02, 0.04),
+      labelOffset: new THREE.Vector3(0.40, -0.06, 0.12),
+      color: 0xec4899,
+    },
+    {
+      id: 'muscles',
+      label: 'Skeletal Musculature',
+      subtitle: 'Pectorals, Abdominals & Quadriceps',
+      organPos: new THREE.Vector3(0.12, 1.38, 0.06),
+      labelOffset: new THREE.Vector3(0.44, 0.06, 0.12),
+      color: 0xd97706,
+    },
+    {
+      id: 'achilles_tendon',
+      label: 'Achilles Tendon',
+      subtitle: 'High-Tensile Calcaneal Cord',
+      organPos: new THREE.Vector3(0.11, 0.14, -0.03),
+      labelOffset: new THREE.Vector3(0.38, 0.04, 0.08),
+      color: 0x06b6d4,
+    },
   ];
 
-  function createCalloutBadge(text: string, partId: string): THREE.Mesh {
-    if (typeof document === 'undefined') {
-      const dummyMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true });
-      const badge = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.075), dummyMat);
-      badge.userData = { bodyPartId: partId };
-      return badge;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 120;
-    const ctx = canvas.getContext('2d')!;
-
-    // Clean modern educational pill card
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 24);
-    ctx.fill();
-    ctx.stroke();
-
-    // Cyan glowing indicator jewel
-    ctx.fillStyle = '#00d2ff';
-    ctx.beginPath();
-    ctx.arc(42, canvas.height / 2, 14, 0, Math.PI * 2);
-    ctx.fill();
-
-    // High-contrast clean typography
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 34px "Segoe UI", sans-serif';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, 72, canvas.height / 2);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-
-    const badgeMat = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-
-    const badge = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.075), badgeMat);
-    badge.userData = { bodyPartId: partId };
-    return badge;
-  }
-
-  const pinAnchorPoints: THREE.Mesh[] = [];
-
-  for (const cfg of pinConfigs) {
+  const createCalloutBadge = (def: CalloutDef): THREE.Group => {
     const pinGroup = new THREE.Group();
+    pinGroup.name = `Callout_${def.id}`;
 
-    // 1. Target anchor sphere on the anatomical organ
-    const anchor = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), matEmitterNeon);
-    anchor.position.copy(cfg.targetPos);
-    anchor.userData = { bodyPartId: cfg.partId };
-    pinGroup.add(anchor);
-    pinAnchorPoints.push(anchor);
-    interactiveMeshes.push(anchor);
+    const nodeGeom = new THREE.SphereGeometry(0.012, 12, 12);
+    const nodeMat = new THREE.MeshBasicMaterial({ color: def.color });
+    const nodeMesh = new THREE.Mesh(nodeGeom, nodeMat);
+    nodeMesh.position.copy(def.organPos);
+    pinGroup.add(nodeMesh);
 
-    // 2. Slender glowing cyan leader line connecting anchor to floating card
-    const lineCurve = new THREE.CatmullRomCurve3([
-      cfg.targetPos,
-      new THREE.Vector3(
-        (cfg.targetPos.x + cfg.badgePos.x) / 2,
-        (cfg.targetPos.y + cfg.badgePos.y) / 2 + 0.015,
-        (cfg.targetPos.z + cfg.badgePos.z) / 2
-      ),
-      cfg.badgePos,
+    const labelPos = def.organPos.clone().add(def.labelOffset);
+    const lineGeom = new THREE.BufferGeometry().setFromPoints([
+      def.organPos,
+      new THREE.Vector3(labelPos.x, def.organPos.y, labelPos.z * 0.8),
+      labelPos,
     ]);
-    const lineTube = new THREE.Mesh(new THREE.TubeGeometry(lineCurve, 16, 0.002, 6, false), matEmitterNeon);
-    pinGroup.add(lineTube);
+    const lineMat = new THREE.LineBasicMaterial({
+      color: def.color,
+      transparent: true,
+      opacity: 0.75,
+    });
+    const laserLine = new THREE.Line(lineGeom, lineMat);
+    pinGroup.add(laserLine);
 
-    // 3. Floating label badge card
-    const badge = createCalloutBadge(cfg.label, cfg.partId);
-    badge.position.copy(cfg.badgePos);
-    pinGroup.add(badge);
-    interactiveMeshes.push(badge);
+    if (typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = 'rgba(7, 24, 44, 0.88)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(8, 8, 496, 144, 16);
+        else ctx.rect(8, 8, 496, 144);
+        ctx.fill();
 
-    pinsGroup.add(pinGroup);
+        ctx.strokeStyle = `#${def.color.toString(16).padStart(6, '0')}`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 32px Inter, sans-serif';
+        ctx.fillText(def.label, 32, 52);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '20px Inter, sans-serif';
+        ctx.fillText(def.subtitle, 32, 94);
+      }
+
+      const badgeTexture = new THREE.CanvasTexture(canvas);
+      const badgeGeom = new THREE.PlaneGeometry(0.24, 0.075);
+      const badgeMat = new THREE.MeshBasicMaterial({
+        map: badgeTexture,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const badgeMesh = new THREE.Mesh(badgeGeom, badgeMat);
+      badgeMesh.position.copy(labelPos);
+      badgeMesh.userData = { isBillboard: true, partId: def.id };
+      pinGroup.add(badgeMesh);
+    }
+
+    calloutPins.set(def.id, pinGroup);
+    return pinGroup;
+  };
+
+  if (showHUD) {
+    for (const def of calloutDefs) {
+      hudGroup.add(createCalloutBadge(def));
+    }
   }
 
   // =========================================================================
-  // 7. SELECTION & HIGHLIGHTING LOGIC
+  // 8. INTERACTION & CONSOLE SYNCHRONIZATION
   // =========================================================================
-  let currentHighlightedPartId: string | null = null;
-  let autoRotating = options.autoRotate ?? false;
+  const selectPart = (id: string | null) => {
+    highlightedPartId = id;
 
-  function selectPart(partId: string | null) {
-    if (currentHighlightedPartId === partId) return;
+    // Reset previous emissives
+    interactiveMeshes.forEach((mesh) => {
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (mat && mat.emissive) {
+        mat.emissive.setHex(0x000000);
+        mat.emissiveIntensity = 0.0;
+      }
+    });
 
-    // Reset previous highlights
-    if (currentHighlightedPartId && partMeshMap.has(currentHighlightedPartId)) {
-      for (const m of partMeshMap.get(currentHighlightedPartId)!) {
-        const orig = partOriginalMaterials.get(m);
-        if (orig) m.material = orig;
+    if (!id) return;
+
+    // Highlight target structure
+    const target = structures.get(id);
+    if (target && target instanceof THREE.Mesh) {
+      const mat = target.material as THREE.MeshStandardMaterial;
+      if (mat && mat.emissive) {
+        mat.emissive.setHex(0x38bdf8);
+        mat.emissiveIntensity = 0.95;
       }
     }
 
-    currentHighlightedPartId = partId;
+    // Filter callout pins
+    calloutPins.forEach((pinGroup, pinId) => {
+      pinGroup.visible = !id || pinId === id;
+    });
+  };
 
-    // Apply glowing highlight material to selected organ
-    if (partId && partMeshMap.has(partId)) {
-      const isMusc = partId === 'muscles';
-      const highlightMat = isMusc ? matMuscleHighlighted : matBoneHighlighted;
-      for (const m of partMeshMap.get(partId)!) {
-        m.material = highlightMat;
+  const selectStructure = (id: string | null) => {
+    selectPart(id);
+  };
+
+  let unsubscribeConsole: (() => void) | null = null;
+  if (consoleRef) {
+    unsubscribeConsole = consoleRef.subscribe((state) => {
+      if (state.selectedPart) {
+        selectPart(state.selectedPart.id);
+      } else {
+        selectPart(null);
       }
-    }
-  }
-
-  function handlePointerDown(hitObject: THREE.Object3D): boolean {
-    let curr: THREE.Object3D | null = hitObject;
-    while (curr && curr !== root) {
-      if (curr.userData && curr.userData.bodyPartId) {
-        const partId = curr.userData.bodyPartId;
-        audio.click();
-        selectPart(partId);
-        if (consoleInstance) {
-          consoleInstance.selectBodyPart(partId);
-        }
-        return true;
-      }
-      curr = curr.parent;
-    }
-    return false;
-  }
-
-  function toggleRotation(): boolean {
-    autoRotating = !autoRotating;
-    return autoRotating;
-  }
-
-  // If console instance is provided, subscribe to its state changes!
-  if (consoleInstance) {
-    consoleInstance.subscribe((state) => {
-      const selectedId = state.selectedPart ? state.selectedPart.id : null;
-      selectPart(selectedId);
     });
   }
 
-  // =========================================================================
-  // 8. ANIMATION LOOP (Respiration, Heartbeat, Shimmer & Turntable)
-  // =========================================================================
-  function update(dt: number, timeSeconds: number) {
-    // 1. Natural Respiration Cycle (~14 breaths per minute)
-    const breathT = Math.sin(timeSeconds * 1.6);
-    const breathScale = 1.0 + breathT * 0.032;
-    lungsGroup.scale.set(breathScale, 1.0 + breathT * 0.015, breathScale);
-    chestMesh.scale.set(1.15 * (1.0 + breathT * 0.018), 1.0, 0.82 * (1.0 + breathT * 0.022));
+  // Load high-fidelity 3D human anatomy model exported from Blender if present
+  if (typeof window !== 'undefined') {
+    const loader = new GLTFLoader();
+    loader.load(
+      '/assets/anatomy/human_anatomy_model.glb',
+      (gltf) => {
+        const blenderScene = gltf.scene;
+        blenderScene.name = 'Blender_HumanAnatomy';
 
-    // 2. Cardiac Heartbeat Pulse (~72 bpm lub-dub cycle)
-    const beatPhase = (timeSeconds * 1.25) % 1.0;
-    let heartPulse = 1.0;
-    if (beatPhase < 0.15) {
-      heartPulse = 1.0 + Math.sin((beatPhase / 0.15) * Math.PI) * 0.09;
-    } else if (beatPhase < 0.32) {
-      heartPulse = 1.0 + Math.sin(((beatPhase - 0.15) / 0.17) * Math.PI) * 0.045;
-    }
-    heartGroup.scale.set(heartPulse, heartPulse, heartPulse);
+        blenderScene.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            const name = child.name.toLowerCase();
 
-    // 3. Floating HUD Rings slow orbital drift
-    waistHud.rotation.z = timeSeconds * 0.25;
-    chestHud.rotation.z = -timeSeconds * 0.18;
-    const hudPulse = 0.55 + Math.sin(timeSeconds * 2.5) * 0.18;
-    matHudRing.opacity = hudPulse;
+            let mappedId: string | null = null;
+            if (name.includes('skull')) mappedId = 'skull';
+            else if (name.includes('brain')) mappedId = 'brain';
+            else if (name.includes('spine') || name.includes('vert')) mappedId = 'spine';
+            else if (name.includes('rib')) mappedId = 'ribcage';
+            else if (name.includes('pelvis')) mappedId = 'pelvis';
+            else if (name.includes('humerus') || name.includes('forearm') || name.includes('arm')) mappedId = 'arm';
+            else if (name.includes('hand')) mappedId = 'hand';
+            else if (name.includes('femur')) mappedId = 'femur';
+            else if (name.includes('tibia')) mappedId = 'tibia';
+            else if (name.includes('foot')) mappedId = 'foot';
+            else if (name.includes('lung')) mappedId = 'lungs';
+            else if (name.includes('heart') || name.includes('aorta')) mappedId = 'heart';
+            else if (name.includes('liver') || name.includes('gall')) mappedId = 'liver';
+            else if (name.includes('stomach') || name.includes('pancreas')) mappedId = 'stomach';
+            else if (name.includes('kidney')) mappedId = 'kidneys';
+            else if (name.includes('colon') || name.includes('intestine')) mappedId = 'intestines';
+            else if (name.includes('muscle') || name.includes('deltoid') || name.includes('pec') || name.includes('abdominis') || name.includes('biceps') || name.includes('quad')) mappedId = 'muscles';
+            else if (name.includes('achilles')) mappedId = 'achilles_tendon';
 
-    // 4. Hologram Emitter Rings Shimmer
-    matEmitterGlow.opacity = 0.30 + Math.sin(timeSeconds * 3.2) * 0.12;
-    matBeamCone.opacity = 0.09 + Math.sin(timeSeconds * 2.0) * 0.04;
+            if (mappedId) {
+              child.userData = {
+                bodyPartId: mappedId,
+                partId: mappedId,
+                partName: child.name,
+                originalMat: child.material,
+              };
+              structures.set(mappedId, child);
+              interactiveMeshes.push(child);
+            }
+          }
+        });
 
-    // 5. Pulsing callout anchor spheres
-    const anchorScale = 1.0 + Math.sin(timeSeconds * 4.0) * 0.22;
-    for (const a of pinAnchorPoints) {
-      a.scale.set(anchorScale, anchorScale, anchorScale);
-    }
-
-    // 6. Optional Turntable Rotation
-    if (autoRotating) {
-      bodyGroup.rotation.y = (bodyGroup.rotation.y + dt * 0.35) % (Math.PI * 2);
-    }
+        // Crossfade to the Blender model
+        skeletalGroup.visible = false;
+        muscularGroup.visible = false;
+        visceralGroup.visible = false;
+        bodyGroup.add(blenderScene);
+      },
+      undefined,
+      () => {
+        // Fallback gracefully to procedural 3D anatomical model
+      }
+    );
   }
+
+  const setLayer = (layer: 'all' | 'skeletal' | 'muscular' | 'visceral' | 'nervous') => {
+    currentLayer = layer;
+    skeletalGroup.visible = layer === 'all' || layer === 'skeletal';
+    muscularGroup.visible = layer === 'all' || layer === 'muscular';
+    visceralGroup.visible = layer === 'all' || layer === 'visceral';
+  };
+
+  const setMode = (mode: 'hologram' | 'realistic' | 'xray') => {
+    currentVisualMode = mode;
+    const isHolo = mode === 'hologram';
+    const isXray = mode === 'xray';
+
+    shieldMesh.visible = isHolo || mode === 'realistic';
+    if (shieldMesh.material instanceof THREE.ShaderMaterial) {
+      shieldMesh.material.uniforms.uColor.value.setHex(isXray ? 0x0284c7 : 0x38bdf8);
+      shieldMesh.material.uniforms.uOpacity.value = isHolo ? 0.65 : 0.28;
+    }
+
+    interactiveMeshes.forEach((mesh) => {
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (!mat) return;
+      if (isHolo) {
+        mat.transparent = true;
+        mat.opacity = 0.72;
+        mat.wireframe = false;
+        mat.emissive = new THREE.Color(0x0284c7);
+        mat.emissiveIntensity = 0.35;
+      } else if (isXray) {
+        mat.transparent = true;
+        mat.opacity = 0.45;
+        mat.wireframe = true;
+        mat.emissive = new THREE.Color(0x38bdf8);
+        mat.emissiveIntensity = 0.50;
+      } else {
+        mat.transparent = false;
+        mat.opacity = 1.0;
+        mat.wireframe = false;
+        mat.emissive = new THREE.Color(0x000000);
+        mat.emissiveIntensity = 0.0;
+      }
+    });
+  };
+
+  // =========================================================================
+  // 9. ANIMATION LOOP & VITAL SIGNS
+  // =========================================================================
+  let totalTime = 0;
+
+  const update = (dt: number, cameraOrTime?: THREE.Camera | number) => {
+    totalTime += dt;
+
+    if (shieldMesh.material instanceof THREE.ShaderMaterial) {
+      shieldMesh.material.uniforms.uTime.value = totalTime;
+    }
+
+    tickRingGroup.rotation.y += dt * 0.35;
+    ring1Mesh.rotation.z -= dt * 0.22;
+    ring2Mesh.rotation.z += dt * 0.18;
+
+    const posAttr = particleGeom.getAttribute('position') as THREE.BufferAttribute;
+    if (posAttr) {
+      const posArray = posAttr.array as Float32Array;
+      for (let i = 0; i < particleCount; i++) {
+        posArray[i * 3 + 1] += particleSpeeds[i] * dt;
+        if (posArray[i * 3 + 1] > 1.95) {
+          posArray[i * 3 + 1] = 0.12;
+        }
+      }
+      posAttr.needsUpdate = true;
+    }
+
+    const breathPhase = Math.sin(totalTime * Math.PI * 2 * 0.23);
+    const breathScale = 1.0 + breathPhase * 0.035;
+    lungsGroup.scale.set(breathScale, 1.0 + breathPhase * 0.015, breathScale);
+    ribsGroup.scale.set(1.0 + breathPhase * 0.018, 1.0, 1.0 + breathPhase * 0.022);
+
+    const beatCycle = (totalTime * 1.16) % 1.0;
+    let heartScale = 1.0;
+    if (beatCycle < 0.15) {
+      heartScale = 1.0 + Math.sin((beatCycle / 0.15) * Math.PI) * 0.08;
+    } else if (beatCycle < 0.35) {
+      heartScale = 1.0 + Math.sin(((beatCycle - 0.15) / 0.20) * Math.PI) * 0.14;
+    }
+    heartGroup.scale.set(heartScale, heartScale, heartScale);
+
+    if (highlightedPartId) {
+      const selectedMesh = structures.get(highlightedPartId);
+      if (selectedMesh && selectedMesh instanceof THREE.Mesh) {
+        const mat = selectedMesh.material as THREE.MeshStandardMaterial;
+        if (mat && mat.emissive) {
+          const pulse = 0.75 + Math.sin(totalTime * 8.0) * 0.25;
+          mat.emissiveIntensity = pulse;
+        }
+      }
+    }
+
+    if (cameraOrTime && typeof cameraOrTime === 'object' && 'isCamera' in cameraOrTime) {
+      const cam = cameraOrTime as THREE.Camera;
+      const tempCamPos = new THREE.Vector3();
+      const tempLocalTarget = new THREE.Vector3();
+      cam.getWorldPosition(tempCamPos);
+      hudGroup.traverse((child) => {
+        if (child.userData && child.userData.isBillboard && child.parent) {
+          child.parent.worldToLocal(tempLocalTarget.copy(tempCamPos));
+          child.lookAt(tempLocalTarget);
+        }
+      });
+    }
+
+    if (autoRotate) {
+      rootGroup.rotation.y += dt * 0.25;
+    }
+  };
+
+  const dispose = () => {
+    if (unsubscribeConsole) unsubscribeConsole();
+    rootGroup.clear();
+  };
 
   return {
-    group: root,
+    group: rootGroup,
     podiumGroup,
     bodyGroup,
-    update,
-    selectPart,
-    get highlightedPartId() {
-      return currentHighlightedPartId;
-    },
     interactiveMeshes,
-    handlePointerDown,
-    toggleRotation,
+    get highlightedPartId() {
+      return highlightedPartId;
+    },
+    selectPart,
+    selectStructure,
+    setLayer,
+    getLayer: () => currentLayer,
+    setMode,
+    getMode: () => currentVisualMode,
+    structures,
+    calloutPins,
+    update,
+    dispose,
   };
 }

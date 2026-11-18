@@ -27,8 +27,22 @@
       .logo img, .logo svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45)); }
       .brand h1 { margin: 0; font-size: 17px; letter-spacing: 0.02em; }
       .brand p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
-      .header-right-column { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; max-width: min(900px, calc(100vw - 360px)); pointer-events: none; }
+      .header-right-column { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: min(900px, calc(100vw - 360px)); pointer-events: none; }
       .header-right-column > * { pointer-events: auto; }
+      .overlay-bar-wrapper { width: 100%; display: flex; justify-content: flex-end; }
+      .overlay-bar-btn { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 16px; background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; color: var(--ink); cursor: pointer; font-weight: 600; font-size: 13.5px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35); transition: all 0.25s ease; user-select: none; }
+      .overlay-bar-btn:hover { background: rgba(30, 41, 59, 0.95); border-color: #38bdf8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.4); }
+      .overlay-bar-left { display: flex; align-items: center; gap: 8px; }
+      .overlay-bar-indicator { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; animation: pulseIndicator 2s infinite; }
+      @keyframes pulseIndicator { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.2); } }
+      .overlay-badge { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+      .overlay-bar-right { display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 12px; }
+      .overlay-toggle-chevron { font-size: 11px; transition: transform 0.25s ease; }
+      .overlay-dropdown-drawer { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; width: 100%; transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, transform 0.25s ease; transform-origin: top right; }
+      .overlay-dropdown-drawer.collapsed { max-height: 0 !important; opacity: 0; overflow: hidden; pointer-events: none; transform: translateY(-8px) scale(0.98); margin: 0; padding: 0; }
+      .overlay-dropdown-drawer.open { max-height: 85vh; opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+      .overlay-drawer-close-btn { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 6px 14px; font-size: 12px; color: #94a3b8; cursor: pointer; width: 320px; text-align: center; transition: all 0.2s ease; margin-top: -2px; }
+      .overlay-drawer-close-btn:hover { background: rgba(30, 41, 59, 0.9); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
       .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; padding: 8px; }
       button, select { font: inherit; font-size: 14px; color: var(--ink); background: #2c4458; border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer; }
       button:hover, select:hover { background: #3d5a73; }
@@ -54,18 +68,121 @@
       #tasks summary::-webkit-details-marker { display: none; }
       #taskCount { font-size: 13px; color: var(--accent-hot); font-weight: 600; white-space: nowrap; }
       #taskList { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
-      #taskList li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 14.5px; line-height: 1.35; }
-      #taskList li::before { content: ''; width: 18px; height: 18px; margin-top: 1px; border-radius: 6px; border: 2px solid var(--muted); }
-      #taskList li.done { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(169,188,203,0.5); }
-      #taskList li.done::before { background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3 3 7-7' fill='none' stroke='white' stroke-width='2.4'/%3E%3C/svg%3E") center/14px no-repeat; border-color: var(--accent); }
-      #taskList li.next { color: #ffffff; font-weight: 600; grid-template-columns: 22px 1fr auto; }
+      #taskList li {
+        display: grid;
+        grid-template-columns: 24px 1fr auto;
+        gap: 10px;
+        align-items: start;
+        font-size: 14.5px;
+        line-height: 1.35;
+        padding: 6px 8px;
+        border-radius: 9px;
+        transition: background 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        cursor: pointer;
+      }
+      #taskList li:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      #taskList li::before {
+        display: none !important;
+        content: none !important;
+      }
+      .task-checkbox {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        margin-top: 1px;
+        border-radius: 6px;
+        border: 2px solid rgba(148, 163, 184, 0.45);
+        background: rgba(15, 23, 42, 0.6);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: pointer;
+        color: transparent;
+        transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .task-checkbox:hover {
+        border-color: #38bdf8;
+        transform: scale(1.18);
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+      }
+      #taskList li.next .task-checkbox {
+        border-color: var(--warn);
+        box-shadow: 0 0 8px rgba(244, 201, 93, 0.35);
+      }
+      #taskList li.done .task-checkbox {
+        background: #059669;
+        border-color: #10b981;
+        color: #ffffff;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.45);
+        transform: scale(1);
+      }
+      .task-check-icon {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        stroke-width: 2.6;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+      }
+      #taskList li:not(.done) .task-check-icon {
+        opacity: 0;
+        transform: scale(0.3) rotate(-20deg);
+      }
+      #taskList li.done .task-check-icon {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+      .task-content {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        cursor: pointer;
+      }
+      .task-title {
+        transition: color 0.2s ease;
+      }
+      #taskList li.done .task-title {
+        color: var(--muted);
+        text-decoration: line-through;
+        text-decoration-color: rgba(169, 188, 203, 0.5);
+      }
+      #taskList li.next .task-title {
+        color: #ffffff;
+        font-weight: 600;
+      }
+      .task-quick-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 4px;
+        padding: 1px 6px;
+        width: fit-content;
+        letter-spacing: 0.03em;
+        opacity: 0.7;
+        transition: opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+      }
+      #taskList li:hover .task-quick-badge {
+        opacity: 1;
+        background: rgba(56, 189, 248, 0.24);
+        border-color: #38bdf8;
+      }
+      #taskList li.done .task-quick-badge {
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.25);
+        opacity: 0.6;
+      }
       .hint-btn { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--warn); color: #1b2533; font-weight: 900; font-size: 15px; line-height: 26px; }
       .hint-btn:hover { background: #ffd978; }
       .hint-btn.pulse { animation: pulse 1.1s ease-in-out infinite; }
       @keyframes pulse { 50% { transform: scale(1.25); box-shadow: 0 0 0 6px rgba(244, 201, 93, 0.25); } }
       @media (prefers-reduced-motion: reduce) { .hint-btn.pulse { animation: none; } }
       .hint { grid-column: 2 / -1; margin-top: 6px; padding: 9px 11px; border-radius: 9px; background: rgba(244, 201, 93, 0.14); color: #fff2cf; font-weight: 500; font-size: 13.5px; line-height: 1.45; }
-      #taskList li.next::before { border-color: var(--warn); }
       #taskInfo { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 13.5px; line-height: 1.45; color: #d7e3ea; }
       body.in-xr header, body.in-xr footer, body.in-xr #hold, body.in-xr #tasks { display: none; }
       
@@ -864,25 +981,46 @@
         <div id="studentPill">🏫 King's College Lagos · Chidi Okafor · Lab #CSS-042</div>
       </div>
       <div class="header-right-column">
-        <div class="actions chip">
-          <a href="schools.html" id="btnSchools" style="text-decoration: none; background: linear-gradient(135deg, #4285f4, #9b72cb); color: #ffffff; font-weight: 700; border-radius: 10px; padding: 9px 14px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px;" title="View Registered Schools">✦ Schools</a>
-          <button id="btnHome" style="background: #0284c7; color: #ffffff; font-weight: 700;">🏠 Welcome</button>
-          <select id="dept" aria-label="Department"></select>
-          <select id="topic" aria-label="Topic"></select>
-          <button id="btnSupermarket">🛒 Supermarket</button>
-          <button id="btnReport">📋 Report</button>
-          <button id="btnBodyParts" style="display: none; background: #0284c7; color: #ffffff; font-weight: 700;">🧬 Body Parts</button>
-          <button id="btnHandTracking" title="Webcam Hand Interaction">🖐️ Hand Tracking</button>
-          <button id="view360" data-t="ui.view360"></button>
-          <button id="reset" data-t="ui.reset"></button>
-          <button id="rec"></button>
-          <button id="vr" class="primary" data-t="ui.enterVR"></button>
+        <!-- Sleek Collapsible Dropdown Bar Header -->
+        <div class="overlay-bar-wrapper">
+          <button id="btnToggleOverlay" class="chip overlay-bar-btn" aria-expanded="true" aria-controls="overlayDropdownDrawer" title="Toggle Lab Overlay Controls">
+            <div class="overlay-bar-left">
+              <span class="overlay-bar-indicator"></span>
+              <span id="overlayBarDept">🧬 Biology Lab</span>
+              <span id="overlayBarTasksBadge" class="overlay-badge">📋 Tasks</span>
+            </div>
+            <div class="overlay-bar-right">
+              <span id="overlayToggleText">Hide Controls</span>
+              <span id="overlayToggleArrow" class="overlay-toggle-chevron">▲</span>
+            </div>
+          </button>
         </div>
-        <details id="tasks" class="chip" open>
-          <summary><span id="taskTitle"></span><span id="taskCount"></span></summary>
-          <ol id="taskList"></ol>
-          <p id="taskInfo"></p>
-        </details>
+
+        <!-- Collapsible Drawer (Action Buttons + Tasks Checklist) -->
+        <div id="overlayDropdownDrawer" class="overlay-dropdown-drawer open">
+          <div class="actions chip">
+            <a href="schools.html" id="btnSchools" style="text-decoration: none; background: linear-gradient(135deg, #4285f4, #9b72cb); color: #ffffff; font-weight: 700; border-radius: 10px; padding: 9px 14px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px;" title="View Registered Schools">✦ Schools</a>
+            <button id="btnHome" style="background: #0284c7; color: #ffffff; font-weight: 700;">🏠 Welcome</button>
+            <select id="dept" aria-label="Department"></select>
+            <select id="topic" aria-label="Topic"></select>
+            <button id="btnSupermarket">🛒 Supermarket</button>
+            <button id="btnReport">📋 Report</button>
+            <button id="btnBodyParts" style="display: none; background: #0284c7; color: #ffffff; font-weight: 700;">🧬 Body Parts</button>
+            <button id="btnHandTracking" title="Webcam Hand Interaction">🖐️ Hand Tracking</button>
+            <button id="view360" data-t="ui.view360"></button>
+            <button id="reset" data-t="ui.reset"></button>
+            <button id="rec"></button>
+            <button id="vr" class="primary" data-t="ui.enterVR"></button>
+          </div>
+          <details id="tasks" class="chip" open>
+            <summary><span id="taskTitle"></span><span id="taskCount"></span></summary>
+            <ol id="taskList"></ol>
+            <p id="taskInfo"></p>
+          </details>
+          <button id="btnCloseOverlayBottom" class="overlay-drawer-close-btn" title="Collapse Overlay Panel">
+            ▲ Close Overlay Bar
+          </button>
+        </div>
       </div>
     </header>
     <div id="hold" class="chip" hidden>
